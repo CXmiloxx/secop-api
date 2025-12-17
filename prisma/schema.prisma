@@ -1,0 +1,213 @@
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+enum tipoDocumento {
+  CEDULA
+  PASAPORTE
+  CEDULA_EXTRANJERIA
+  OTRO
+}
+
+enum estadoPresupuesto {
+  PENDIENTE
+  APROBADO
+  RECHAZADO
+}
+
+enum estadoRequisicion {
+  PENDIENTE
+  APROBADO
+  RECHAZADO
+}
+
+model usuario {
+  id                  String        @id @default(uuid())
+  contrasena          String        @db.VarChar(255)
+  nombre              String        @db.VarChar(255)
+  apellido            String        @db.VarChar(255)
+  tipo_documento      tipoDocumento
+  documento           String
+  correo              String        @unique @db.VarChar(255)
+  telefono            String        @unique @db.VarChar(255)
+  rolId               Int
+  rol                 rol           @relation(fields: [rolId], references: [id], onDelete: Cascade)
+  areas               area?
+  auditoriasCreatedBy auditoria[]   @relation("usuario_auditoria_created_by_usuario")
+  auditoriasUpdatedBy auditoria[]   @relation("usuario_auditoria_updated_by_usuario")
+}
+
+model rol {
+  id          Int       @id @default(autoincrement())
+  nombre      String
+  descripcion String    @db.VarChar(255)
+  usuarios    usuario[]
+}
+
+model area {
+  id                Int                @id @default(autoincrement())
+  nombre            String             @db.VarChar(255)
+  descripcion       String             @db.VarChar(255)
+  idUsuario         String             @unique
+  presupuestos      presupuesto[]
+  requisiciones     requisicion[]
+  inventarios       inventario[]
+  traslados_origen  traslado_activos[] @relation("AreaOrigen")
+  traslados_destino traslado_activos[] @relation("AreaDestino")
+  usuario           usuario            @relation(fields: [idUsuario], references: [id])
+}
+
+model presupuesto {
+  id                     Int                     @id @default(autoincrement())
+  id_area                Int
+  area                   area                    @relation(fields: [id_area], references: [id], onDelete: Cascade)
+  justificacion          String
+  porcentaje_aprobacion  Float
+  estado                 estadoPresupuesto
+  anio                   DateTime
+  valor_solicitado       Float
+  articulos_presupuestos articulos_presupuesto[]
+}
+
+model producto {
+  id                    Int                     @id @default(autoincrement())
+  nombre                String                  @unique @db.VarChar(255)
+  tipo                  String
+  id_concepto_contable  Int
+  concepto_contable     concepto_contable       @relation(fields: [id_concepto_contable], references: [id])
+  inventarios           inventario[]
+  articulos_requisicion articulo_requisicion[]
+  articulosPresupuestos articulos_presupuesto[]
+}
+
+model concepto_contable {
+  id                    Int                     @id @default(autoincrement())
+  nombre                String                  @unique @db.VarChar(255)
+  id_cuenta_contable    Int
+  cuenta_contable       cuenta_contable         @relation(fields: [id_cuenta_contable], references: [id])
+  productos             producto[]
+  articulosPresupuestos articulos_presupuesto[]
+  articuloRequisicions  articulo_requisicion[]
+}
+
+model cuenta_contable {
+  id                    Int                     @id @default(autoincrement())
+  nombre                String                  @unique @db.VarChar(255)
+  conceptoContables     concepto_contable[]
+  articulosPresupuestos articulos_presupuesto[]
+  articuloRequisicions  articulo_requisicion[]
+}
+
+model articulos_presupuesto {
+  id                   Int               @id @default(autoincrement())
+  id_cuenta_contable   Int
+  id_concepto_contable Int
+  id_producto_contable Int
+  id_presupuesto       Int
+  cantidad             Float
+  valor_unitario       Float
+  presupuesto          presupuesto       @relation(fields: [id_presupuesto], references: [id])
+  cuenta_contable      cuenta_contable   @relation(fields: [id_cuenta_contable], references: [id])
+  concepto_contable    concepto_contable @relation(fields: [id_concepto_contable], references: [id])
+  producto_contable    producto          @relation(fields: [id_producto_contable], references: [id])
+}
+
+model proveedor {
+  id              Int           @id @default(autoincrement())
+  nit             String        @unique
+  nombre          String        @unique @db.VarChar(255)
+  nombre_contacto String        @db.VarChar(255)
+  telefono        String        @unique @db.VarChar(255)
+  correo          String        @unique @db.VarChar(255)
+  tipo_insumo     String        @db.VarChar(255)
+  requisiciones   requisicion[]
+}
+
+model articulo_requisicion {
+  id                   Int               @id @default(autoincrement())
+  id_cuenta_contable   Int
+  cuenta_contable      cuenta_contable   @relation(fields: [id_cuenta_contable], references: [id])
+  id_concepto_contable Int
+  concepto_contable    concepto_contable @relation(fields: [id_concepto_contable], references: [id])
+  id_producto_contable Int
+  producto             producto          @relation(fields: [id_producto_contable], references: [id])
+  cantidad             Float
+  valor_unitario       Float
+  id_requisicion       Int
+  requisicion          requisicion       @relation(fields: [id_requisicion], references: [id])
+}
+
+model requisicion {
+  id                       Int                    @id @default(autoincrement())
+  id_area                  Int
+  area                     area                   @relation(fields: [id_area], references: [id])
+  id_proveedor             Int
+  proveedor                proveedor              @relation(fields: [id_proveedor], references: [id])
+  estado                   estadoRequisicion
+  valor_presupuestado      Float
+  iva_presupuestado        Float
+  valor_definido           Float
+  iva_definido             Float
+  justification            String
+  partida_no_presupuestada Boolean
+  id_primera_cotizacion    String
+  id_segunda_cotizacion    String
+  id_tercera_cotizacion    String
+  comentario               String
+  numero_de_comite         String
+  rector                   String
+  vicerrector              String
+  sindico                  String
+  garantia_provedor        String
+  tiempo_garantia          String
+  unidad_tiempo_garantia   String
+  motivo_rechazo           String
+  pago_caja_menor          String
+  soporte_factura          String
+  articulos                articulo_requisicion[]
+}
+
+model inventario {
+  id              Int                @id @default(autoincrement())
+  id_area         Int
+  area            area               @relation(fields: [id_area], references: [id])
+  id_producto     Int
+  producto        producto           @relation(fields: [id_producto], references: [id])
+  cantidad        Float
+  fecha_ingreso   DateTime
+  tipo_movimiento String
+  motivo_salida   String
+  tipo_producto   String
+  codigo_producto String
+  traslados       traslado_activos[]
+}
+
+model traslado_activos {
+  id              Int        @id @default(autoincrement())
+  codigo          String
+  id_inventario   Int
+  inventario      inventario @relation(fields: [id_inventario], references: [id])
+  id_area_origen  Int
+  area_origen     area       @relation("AreaOrigen", fields: [id_area_origen], references: [id])
+  id_area_destino Int
+  area_destino    area       @relation("AreaDestino", fields: [id_area_destino], references: [id])
+  motivo_traslado String
+  estado          String
+  motivo_rechazo  String
+}
+
+model auditoria {
+  id            Int      @id @default(autoincrement())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  createdBy     String
+  updatedBy     String
+  createdByUser usuario  @relation("usuario_auditoria_created_by_usuario", fields: [createdBy], references: [id], map: "auditoria_created_by_fkey")
+  updatedByUser usuario  @relation("usuario_auditoria_updated_by_usuario", fields: [updatedBy], references: [id], map: "auditoria_updated_by_fkey")
+}

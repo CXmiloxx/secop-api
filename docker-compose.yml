@@ -1,0 +1,40 @@
+services:
+  db:
+    image: mysql:8.0
+    container_name: secop-database
+    ports:
+      - "${DATABASE_PORT:-3306}:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DATABASE_ROOT_PASSWORD:-root}
+      MYSQL_DATABASE: ${DATABASE_NAME:-secop-database}
+      MYSQL_USER: ${DATABASE_USER:-secop-user}
+      MYSQL_PASSWORD: ${DATABASE_PASSWORD:-secop-password}
+      MYSQL_ROOT_HOST: '%'
+      TZ: ${TZ:-UTC}
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./docker/mysql/init:/docker-entrypoint-initdb.d
+    command: >
+      --default-authentication-plugin=mysql_native_password
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+      --max_connections=200
+      --innodb_buffer_pool_size=256M
+      --innodb_log_file_size=64M
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DATABASE_ROOT_PASSWORD:-root}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+    networks:
+      - secop-network
+
+volumes:
+  db_data:
+    driver: local
+
+networks:
+  secop-network:
+    driver: bridge
