@@ -1,4 +1,3 @@
-import { appConfig } from '@/config/app.config';
 import { PrismaClient } from '@/generated/prisma/client';
 import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
 import { PrismaMariaDb } from '@prisma/adapter-mariadb';
@@ -8,7 +7,7 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
   private readonly logger = new Logger(PrismaService.name);
 
   constructor() {
-    const adapter = new PrismaMariaDb(appConfig.urlDatabase!);
+    const adapter = new PrismaMariaDb(process.env.DATABASE_URL!);
     super({ adapter, log: ['info', 'warn', 'error'] });
   }
 

@@ -1,9 +1,8 @@
 import 'dotenv/config';
 import { PrismaClient } from '../src/generated/prisma/client';
 import { PrismaMariaDb } from '@prisma/adapter-mariadb';
-import { appConfig } from '@/config/app.config';
 
-const adapter = new PrismaMariaDb(appConfig.urlDatabase!);
+const adapter = new PrismaMariaDb(process.env.DATABASE_URL!);
 const prisma = new PrismaClient({ adapter });
 
 async function main() {
