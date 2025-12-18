@@ -2,7 +2,8 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { config } from 'dotenv';
 import { appConfig } from './config/app.config';
-import { HttpExceptionFilter, LoggingInterceptor } from './common';
+import { loggerConfig } from './config/logger.config';
+import { HttpExceptionFilter, LoggingInterceptor, logger, LoggerService } from './common';
 import { ValidationPipe } from '@nestjs/common';
 import cookieParser from 'cookie-parser';
 import session from 'express-session';
@@ -10,7 +11,11 @@ import session from 'express-session';
 config();
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, {
+    logger: loggerConfig.levels,
+  });
+
+  LoggerService.getInstance().setLogLevels(loggerConfig.levels);
 
   // Session configuration
   app.use(
@@ -51,7 +56,7 @@ async function bootstrap() {
   );
 
   await app.listen(appConfig.port);
-  console.log(`🚀 Application is running on: http://localhost:${appConfig.port}`);
+  logger.log(`🚀 Application is running on: http://localhost:${appConfig.port}`, 'Bootstrap');
 }
 
 void bootstrap();

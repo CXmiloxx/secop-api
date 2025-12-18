@@ -6,6 +6,7 @@ import { IdTokenClaims } from '@azure/msal-node';
 import { JwtService } from '@nestjs/jwt';
 import { Public } from './decorators/public.decorator';
 import { appConfig } from '@/config/app.config';
+import { logger } from '@/common';
 
 @Controller('auth')
 export class AuthController {
@@ -67,8 +68,8 @@ export class AuthController {
       const response = await msal.acquireTokenByCode(tokenRequest);
 
       const idToken = response.idTokenClaims as IdTokenClaims;
-      console.log('response', response);
-      console.log('idToken', idToken);
+      logger.debug(`Auth response: ${JSON.stringify(response)}`, 'AuthController');
+      logger.debug(`ID Token: ${JSON.stringify(idToken)}`, 'AuthController');
 
       // ✅ Verifica que el usuario pertenece a tu tenant (Office 365)
       if (idToken?.tid !== appConfig.azureAdTenantId) {
@@ -101,7 +102,7 @@ export class AuthController {
 
       res.redirect(`${appConfig.urlFrontend}/presupuestos`);
     } catch (error) {
-      console.error('Auth callback error:', error);
+      logger.error('Auth callback error', String(error), 'AuthController');
       res.redirect(`${appConfig.urlFrontend}/login?error=auth_failed`);
     }
   }

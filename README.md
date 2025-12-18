@@ -341,6 +341,60 @@ auth/
     └── auth.entity.ts             → Entidad de autenticación
 ```
 
+# Logger Singleton
+
+Sistema de logging centralizado para la aplicación.
+
+## Uso
+
+```typescript
+import { logger } from '@/common';
+
+// Log simple
+logger.log('Mensaje informativo');
+
+// Log con contexto
+logger.log('Usuario creado exitosamente', 'UserService');
+
+// Error con stack trace
+logger.error('Error al conectar', error.stack, 'DatabaseService');
+
+// Warning
+logger.warn('Advertencia: límite alcanzado', 'RateLimiter');
+
+// Debug (solo en desarrollo)
+logger.debug('Datos de depuración', 'DebugContext');
+
+// Verbose
+logger.verbose('Información detallada', 'DetailedContext');
+```
+
+## Obtener instancia específica
+
+```typescript
+import { LoggerService } from '@/common';
+
+const loggerService = LoggerService.getInstance();
+const myLogger = loggerService.getLogger('MiContexto');
+
+myLogger.log('Mensaje desde mi contexto');
+```
+
+## Características
+
+- **Singleton**: Una única instancia en toda la aplicación
+- **Contextos**: Cada logger puede tener su propio contexto
+- **Cache**: Los loggers se cachean para evitar crear múltiples instancias
+- **Compatible**: Usa el Logger nativo de NestJS internamente
+
+
+#### 📂 **`src/common/logger`** - Módulo de Logger
+
+logger/
+├── index.ts
+├── logger.service.ts Configuracion para cada tipo de logger
+└──
+
 **Flujo de Autenticación:**
 
 1. Usuario → `GET /auth/login`
