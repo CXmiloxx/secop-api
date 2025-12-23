@@ -9,11 +9,12 @@ import * as bcrypt from 'bcrypt';
 import { CreateAuthDto } from './dto/create-auth.dto';
 import { UpdateAuthDto } from './dto/update-auth.dto';
 import { LoginDto } from './dto/login.dto';
-import { RegisterDto } from './dto/register.dto';
 import { PrismaService } from '@prisma/prisma.service';
 import { JwtPayload } from './interfaces/jwt-payload.interface';
 import { AuthResponse } from './interfaces/auth-response.interface';
+import { Response } from 'express';
 
+type PrismaModel = keyof PrismaService;
 @Injectable()
 export class AuthService {
   constructor(
@@ -21,10 +22,10 @@ export class AuthService {
     private readonly jwtService: JwtService,
   ) {}
 
-  async register(registerDto: RegisterDto): Promise<AuthResponse> {
+  async register(createAuthDto: CreateAuthDto): Promise<AuthResponse> {
     // Verificar si el usuario ya existe
     const existingUser = await this.prisma.usuario.findUnique({
-      where: { correo: registerDto.correo },
+      where: { correo: createAuthDto.correo },
     });
 
     if (existingUser) {
@@ -32,69 +33,109 @@ export class AuthService {
     }
 
     // Hash de la contraseña
-    const hashedPassword = await bcrypt.hash(registerDto.contrasena, 10);
+    const hashedPassword = await bcrypt.hash(createAuthDto.contrasena, 10);
 
     // Crear usuario
     const usuario = await this.prisma.usuario.create({
       data: {
-        ...registerDto,
+        ...createAuthDto,
         contrasena: hashedPassword,
       },
-      include: { rol: true, areas: true },
+      include: { rol: true, area: true },
     });
-
-    // Generar token
-    const accessToken = this.generateToken(usuario.id, usuario.correo, usuario.rolId);
 
     return {
       data: {
         ...usuario,
       },
-      accessToken,
     };
   }
 
-  async login(loginDto: LoginDto): Promise<AuthResponse> {
-    // Buscar usuario
+  async login(loginDto: LoginDto, res: Response) {
     const usuario = await this.prisma.usuario.findUnique({
       where: { correo: loginDto.correo },
-      include: { rol: true, areas: true },
+      include: {
+        rol: { select: { id: true, nombre: true } },
+        area: { select: { id: true, nombre: true } },
+      },
     });
 
     if (!usuario) {
       throw new UnauthorizedException('Credenciales inválidas');
     }
+
+    if (usuario.estado === false) {
+      throw new UnauthorizedException('El usuario esta inactivo');
+    }
+
+    const isValid = await bcrypt.compare(loginDto.contrasena, usuario.contrasena);
+
+    if (!isValid) {
+      throw new UnauthorizedException('Credenciales inválidas');
+    }
+
+    const token = this.generateToken(usuario.id, usuario.correo, usuario.rolId);
+    const refres_token = this.generateToken(usuario.id, usuario.correo, usuario.rolId);
+
+    // 👉 COOKIE
+    res.cookie('access_token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 1000 * 60 * 60 * 24, // 1 día
+      path: '/',
+    });
+
+    res.cookie('refresh_token', refres_token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 1000 * 60 * 60 * 24, // 1 día
+      path: '/',
+    });
+
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { contrasena, ...userWithoutPassword } = usuario;
 
-    // Verificar contraseña
-    const isPasswordValid = await bcrypt.compare(loginDto.contrasena, contrasena);
-
-    if (!isPasswordValid) {
-      throw new UnauthorizedException('Credenciales inválidas');
-    }
-
-    // Generar token
-    const accessToken = this.generateToken(usuario.id, usuario.correo, usuario.rolId);
-
-    return {
-      data: {
-        ...userWithoutPassword,
-      },
-      accessToken,
-    };
+    return userWithoutPassword;
   }
 
-  async findByEmail(email: string) {
-    const usuario = await this.prisma.usuario.findUnique({
-      where: { correo: email },
-      include: { rol: true, areas: true },
+  async allUsers() {
+    return await this.prisma.usuario.findMany({
+      omit: {
+        contrasena: true,
+        rolId: true,
+        areaId: true,
+      },
+      include: {
+        area: {
+          select: {
+            id: true,
+            nombre: true,
+          },
+        },
+        rol: {
+          select: {
+            id: true,
+            nombre: true,
+          },
+        },
+      },
     });
+  }
 
-    if (!usuario) {
-      throw new NotFoundException('Usuario no encontrado');
-    }
+  async findAll(
+    model: PrismaModel,
+    options?: {
+      where?: Record<string, any>;
+      select?: Record<string, boolean>;
+    },
+  ) {
+    return await (this.prisma[model] as any).findMany(options);
 
-    return usuario;
+    /*  return {
+      data,
+    }; */
   }
 
   async getProfile(userId: string) {
@@ -132,27 +173,9 @@ export class AuthService {
       rolId,
     };
 
-    return this.jwtService.sign(payload);
-  }
-
-  // Métodos CRUD originales
-  async create(createAuthDto: CreateAuthDto) {
-    const hashedPassword = await bcrypt.hash(createAuthDto.contrasena, 10);
-    const usuario = await this.prisma.usuario.create({
-      data: {
-        ...createAuthDto,
-        contrasena: hashedPassword,
-      },
-      include: { rol: true },
+    return this.jwtService.sign(payload, {
+      expiresIn: '1d',
     });
-    return usuario;
-  }
-
-  async findAll() {
-    const usuarios = await this.prisma.usuario.findMany({
-      include: { rol: true },
-    });
-    return usuarios;
   }
 
   async findOne(id: string) {

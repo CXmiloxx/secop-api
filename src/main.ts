@@ -3,7 +3,13 @@ import { AppModule } from './app.module';
 import { config } from 'dotenv';
 import { appConfig } from './config/app.config';
 import { loggerConfig } from './config/logger.config';
-import { HttpExceptionFilter, LoggingInterceptor, logger, LoggerService } from './common';
+import {
+  HttpExceptionFilter,
+  LoggingInterceptor,
+  logger,
+  LoggerService,
+  TransformInterceptor,
+} from './common';
 import { ValidationPipe } from '@nestjs/common';
 import cookieParser from 'cookie-parser';
 import session from 'express-session';
@@ -45,6 +51,8 @@ async function bootstrap() {
 
   // Global interceptors
   app.useGlobalInterceptors(new LoggingInterceptor());
+
+  app.useGlobalInterceptors(new TransformInterceptor());
 
   // Global validation pipe
   app.useGlobalPipes(

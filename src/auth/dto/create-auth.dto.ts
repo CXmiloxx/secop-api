@@ -32,4 +32,7 @@ export class CreateAuthDto {
 
   @IsInt()
   rolId: number;
+
+  @IsInt()
+  areaId: number;
 }

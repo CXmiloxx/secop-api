@@ -8,6 +8,9 @@ export interface AuthResponse {
       id: number;
       nombre: string;
     };
+    area: {
+      id: number;
+      nombre: string;
+    };
   };
-  accessToken: string;
 }

@@ -33,14 +33,16 @@ model usuario {
   nombre              String        @db.VarChar(255)
   apellido            String        @db.VarChar(255)
   tipo_documento      tipoDocumento
+  estado              Boolean       @default(true)
   documento           String
   correo              String        @unique @db.VarChar(255)
   telefono            String        @unique @db.VarChar(255)
   rolId               Int
   rol                 rol           @relation(fields: [rolId], references: [id], onDelete: Cascade)
-  areas               area?
+  area                area          @relation(fields: [areaId], references: [id])
   auditoriasCreatedBy auditoria[]   @relation("usuario_auditoria_created_by_usuario")
   auditoriasUpdatedBy auditoria[]   @relation("usuario_auditoria_updated_by_usuario")
+  areaId              Int
 }
 
 model rol {
@@ -54,13 +56,12 @@ model area {
   id                Int                @id @default(autoincrement())
   nombre            String             @db.VarChar(255)
   descripcion       String             @db.VarChar(255)
-  idUsuario         String             @unique
   presupuestos      presupuesto[]
   requisiciones     requisicion[]
   inventarios       inventario[]
   traslados_origen  traslado_activos[] @relation("AreaOrigen")
   traslados_destino traslado_activos[] @relation("AreaDestino")
-  usuario           usuario            @relation(fields: [idUsuario], references: [id])
+  usuarios          usuario[]
 }
 
 model presupuesto {
@@ -99,6 +100,7 @@ model concepto_contable {
 model cuenta_contable {
   id                    Int                     @id @default(autoincrement())
   nombre                String                  @unique @db.VarChar(255)
+  codigo                String
   conceptoContables     concepto_contable[]
   articulosPresupuestos articulos_presupuesto[]
   articuloRequisicions  articulo_requisicion[]
@@ -122,7 +124,7 @@ model proveedor {
   id              Int           @id @default(autoincrement())
   nit             String        @unique
   nombre          String        @unique @db.VarChar(255)
-  nombre_contacto String        @db.VarChar(255)
+  responsable String        @db.VarChar(255)
   telefono        String        @unique @db.VarChar(255)
   correo          String        @unique @db.VarChar(255)
   tipo_insumo     String        @db.VarChar(255)

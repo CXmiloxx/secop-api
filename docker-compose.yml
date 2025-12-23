@@ -3,7 +3,7 @@ services:
     image: mysql:8.0
     container_name: secop-database
     ports:
-      - "${DATABASE_PORT:-3306}:3306"
+      - '${DATABASE_PORT:-3306}:3306'
     environment:
       MYSQL_ROOT_PASSWORD: ${DATABASE_ROOT_PASSWORD:-root}
       MYSQL_DATABASE: ${DATABASE_NAME:-secop-database}
@@ -22,7 +22,17 @@ services:
       --innodb_buffer_pool_size=256M
       --innodb_log_file_size=64M
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DATABASE_ROOT_PASSWORD:-root}"]
+      test:
+        [
+          'CMD',
+          'mysqladmin',
+          'ping',
+          '-h',
+          'localhost',
+          '-u',
+          'root',
+          '-p${DATABASE_ROOT_PASSWORD:-root}',
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -30,6 +40,17 @@ services:
     restart: unless-stopped
     networks:
       - secop-network
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: secop-api
+    ports:
+      - '${PORT:-3801}:3801'
+    env_file:
+      - .env
+    restart: unless-stopped
 
 volumes:
   db_data:

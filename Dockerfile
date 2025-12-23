@@ -41,8 +41,8 @@ COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/src/generated ./src/generated
 
 # Expose port
-EXPOSE 3000
+EXPOSE 3801
 
 # Start application
-CMD ["node", "dist/main"]
+CMD ["node", "dist/src/main.js"]
 
