@@ -91,19 +91,31 @@ model concepto_contable {
   id                    Int                     @id @default(autoincrement())
   nombre                String                  @unique @db.VarChar(255)
   id_cuenta_contable    Int
+  codigo                String                  @unique
   cuenta_contable       cuenta_contable         @relation(fields: [id_cuenta_contable], references: [id])
   productos             producto[]
   articulosPresupuestos articulos_presupuesto[]
   articuloRequisicions  articulo_requisicion[]
 }
 
+model tipo_cuenta_contable {
+  id             Int               @id @default(autoincrement())
+  nombre         String            @db.VarChar(255)
+  codigo         String            @unique
+  descripcion    String?           @db.VarChar(255)
+  cuentaContable cuenta_contable[]
+}
+
 model cuenta_contable {
-  id                    Int                     @id @default(autoincrement())
-  nombre                String                  @unique @db.VarChar(255)
-  codigo                String
-  conceptoContables     concepto_contable[]
-  articulosPresupuestos articulos_presupuesto[]
-  articuloRequisicions  articulo_requisicion[]
+  id                      Int                     @id @default(autoincrement())
+  nombre                  String                  @db.VarChar(255)
+  codigo                  String                  @unique
+  id_tipo_cuenta_contable Int
+  conceptoContables       concepto_contable[]
+  articulosPresupuestos   articulos_presupuesto[]
+  articuloRequisicions    articulo_requisicion[]
+
+  tipoCuentaContable tipo_cuenta_contable @relation(fields: [id_tipo_cuenta_contable], references: [id])
 }
 
 model articulos_presupuesto {
@@ -121,14 +133,14 @@ model articulos_presupuesto {
 }
 
 model proveedor {
-  id              Int           @id @default(autoincrement())
-  nit             String        @unique
-  nombre          String        @unique @db.VarChar(255)
-  responsable String        @db.VarChar(255)
-  telefono        String        @unique @db.VarChar(255)
-  correo          String        @unique @db.VarChar(255)
-  tipo_insumo     String        @db.VarChar(255)
-  requisiciones   requisicion[]
+  id            Int           @id @default(autoincrement())
+  nit           String        @unique
+  nombre        String        @unique @db.VarChar(255)
+  responsable   String        @db.VarChar(255)
+  telefono      String        @unique @db.VarChar(255)
+  correo        String        @unique @db.VarChar(255)
+  tipo_insumo   String        @db.VarChar(255)
+  requisiciones requisicion[]
 }
 
 model articulo_requisicion {
