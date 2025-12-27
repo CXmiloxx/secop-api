@@ -2,7 +2,7 @@ import { Body, Controller, Get, HttpCode, HttpStatus, Param, Post, Res } from '@
 import { type Response } from 'express';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
-import { Public } from './decorators/public.decorator';
+import { Public } from '../common/decorators/public.decorator';
 import { PrismaService } from '@prisma/prisma.service';
 import { logger } from '@/common';
 import { CreateAuthDto } from './dto/create-auth.dto';

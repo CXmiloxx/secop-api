@@ -6,7 +6,7 @@ import { JwtService } from '@nestjs/jwt';
 import { appConfig } from '@/config/app.config';
 import { logger } from '@/common';
 import { MsalConfigService } from './msal.config';
-import { Public } from '../decorators/public.decorator';
+import { Public } from '../../common/decorators/public.decorator';
 
 @Controller('auth-azure')
 export class AuthController {
