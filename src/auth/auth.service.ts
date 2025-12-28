@@ -97,7 +97,7 @@ export class AuthService {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { contrasena, ...userWithoutPassword } = usuario;
 
-    return userWithoutPassword;
+    return { data: userWithoutPassword, message: 'Inicio de sesion Exitoso' };
   }
 
   async allUsers() {
