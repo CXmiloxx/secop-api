@@ -8,8 +8,8 @@ export class ProviderController {
   constructor(private readonly providerService: ProviderService) {}
 
   @Post()
-  create(@Body() createProviderDto: CreateProviderDto) {
-    return this.providerService.create(createProviderDto);
+  async create(@Body() createProviderDto: CreateProviderDto) {
+    return await this.providerService.create(createProviderDto);
   }
 
   @Get()
