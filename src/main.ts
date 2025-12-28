@@ -1,20 +1,19 @@
-import { NestFactory, Reflector } from '@nestjs/core';
+import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { config } from 'dotenv';
-import { appConfig } from './config/app.config';
-import { loggerConfig } from './config/logger.config';
-import {
-  HttpExceptionFilter,
-  LoggingInterceptor,
-  logger,
-  LoggerService,
-  TransformInterceptor,
-} from './common';
+
 import { ValidationPipe } from '@nestjs/common';
 import cookieParser from 'cookie-parser';
 import session from 'express-session';
-import { RolesGuard } from '@/common/guards/roles.guard';
-import { JwtAuthGuard } from '@/common/guards/jwt-auth.guard';
+import { appConfig } from '@/config/app.config';
+import { loggerConfig } from '@/config/logger.config';
+import {
+  HttpExceptionFilter,
+  logger,
+  LoggerService,
+  LoggingInterceptor,
+  TransformInterceptor,
+} from '@/common';
 
 config();
 
@@ -54,7 +53,6 @@ async function bootstrap() {
   // Global interceptors
   app.useGlobalInterceptors(new LoggingInterceptor(), new TransformInterceptor());
 
-  app.useGlobalGuards(new JwtAuthGuard(app.get(Reflector)), new RolesGuard(app.get(Reflector)));
   // Global validation pipe
   app.useGlobalPipes(
     new ValidationPipe({
