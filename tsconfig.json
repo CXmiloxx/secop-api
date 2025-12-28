@@ -25,7 +25,9 @@
     "paths": {
       "@/*": ["src/*"],
       "@prisma/*": ["prisma/*"],
-      "@generated/*": ["src/generated/*"]
+      "@generated/*": ["src/generated/*"],
+      "@common/*": ["src/common/*"],
+      "@config/*": ["src/config"]
     }
   },
   "include": ["src/**/*", "prisma/**/*", "test/**/*"],
