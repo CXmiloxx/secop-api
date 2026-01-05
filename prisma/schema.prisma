@@ -70,7 +70,7 @@ model presupuesto {
   area                   area                    @relation(fields: [id_area], references: [id], onDelete: Cascade)
   justificacion          String
   porcentaje_aprobacion  Float
-  estado                 estadoPresupuesto
+  estado                 estadoPresupuesto       @default(PENDIENTE)
   anio                   DateTime
   valor_solicitado       Float
   articulos_presupuestos articulos_presupuesto[]
