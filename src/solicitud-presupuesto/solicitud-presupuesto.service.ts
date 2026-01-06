@@ -1,29 +1,29 @@
+import { CreateSolicitudPresupuestoDto } from '@/solicitud-presupuesto/dto/create-solicitud-presupuesto.dto';
+import { UpdateSolicitudPresupuestoDto } from '@/solicitud-presupuesto/dto/update-solicitud-presupuesto.dto';
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { CreateSolicitarPresupuestoDto } from './dto/create-solicitar-presupuesto.dto';
-import { UpdateSolicitarPresupuestoDto } from './dto/update-solicitar-presupuesto.dto';
 import { PrismaService } from '@prisma/prisma.service';
 
 @Injectable()
-export class SolicitarPresupuestoService {
+export class SolicitudPresupuestoService {
   constructor(private readonly prisma: PrismaService) {}
-  async create(createSolicitarPresupuestoDto: CreateSolicitarPresupuestoDto) {
+  async create(createSolicitudPresupuestoDto: CreateSolicitudPresupuestoDto) {
     const usuarioSolicitante = await this.prisma.usuario.findUnique({
-      where: { id: createSolicitarPresupuestoDto.usuarioSolicitanteId },
+      where: { id: createSolicitudPresupuestoDto.usuarioSolicitanteId },
       include: {
         area: true,
       },
     });
 
     //1. Verificar si el usuario solicita presupuesto para su propia área
-    if (usuarioSolicitante?.areaId !== createSolicitarPresupuestoDto.areaId) {
+    if (usuarioSolicitante?.areaId !== createSolicitudPresupuestoDto.areaId) {
       throw new BadRequestException('No puedes solicitar presupuesto para otra área');
     }
 
     //2. Verificar si el usuario tiene presupuesto disponible
     const presupuestoDisponible = await this.prisma.presupuesto.findFirst({
       where: {
-        areaId: createSolicitarPresupuestoDto.areaId,
-        periodoId: createSolicitarPresupuestoDto.periodoId,
+        areaId: createSolicitudPresupuestoDto.areaId,
+        periodoId: createSolicitudPresupuestoDto.periodoId,
       },
     });
 
@@ -35,18 +35,18 @@ export class SolicitarPresupuestoService {
     const solicitud = await this.prisma.$transaction(async (tx) => {
       const nuevaSolicitud = await tx.solicitudPresupuesto.create({
         data: {
-          areaId: createSolicitarPresupuestoDto.areaId,
-          periodoId: createSolicitarPresupuestoDto.periodoId,
-          usuarioSolicitanteId: createSolicitarPresupuestoDto.usuarioSolicitanteId,
+          areaId: createSolicitudPresupuestoDto.areaId,
+          periodoId: createSolicitudPresupuestoDto.periodoId,
+          usuarioSolicitanteId: createSolicitudPresupuestoDto.usuarioSolicitanteId,
           estado: 'PENDIENTE',
-          montoSolicitado: createSolicitarPresupuestoDto.montoSolicitado,
-          justificacion: createSolicitarPresupuestoDto.justificacion,
+          montoSolicitado: createSolicitudPresupuestoDto.montoSolicitado,
+          justificacion: createSolicitudPresupuestoDto.justificacion,
         },
       });
 
       // Crear ítems
       await tx.articuloSolicitudPresupuesto.createMany({
-        data: createSolicitarPresupuestoDto.articulos.map((item) => ({
+        data: createSolicitudPresupuestoDto.articulos.map((item) => ({
           solicitudId: nuevaSolicitud.id,
           productoId: item.productoId,
           conceptoContableId: item.conceptoContableId,
@@ -72,8 +72,8 @@ export class SolicitarPresupuestoService {
     return `This action returns a #${id} solicitarPresupuesto`;
   }
 
-  update(id: number, updateSolicitarPresupuestoDto: UpdateSolicitarPresupuestoDto) {
-    return `This action updates a #${id} solicitarPresupuesto`;
+  update(id: number, updateSolicitudPresupuestoDto: UpdateSolicitudPresupuestoDto) {
+    return `This action updates a #${id} solicitudPresupuesto: ${JSON.stringify(updateSolicitudPresupuestoDto)}`;
   }
 
   remove(id: number) {

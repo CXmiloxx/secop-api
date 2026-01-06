@@ -12,7 +12,7 @@ import {
   IsString,
 } from 'class-validator';
 
-export class CreateSolicitarPresupuestoDto {
+export class CreateSolicitudPresupuestoDto {
   @IsInt()
   @IsNotEmpty()
   areaId: number;
