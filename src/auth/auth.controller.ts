@@ -1,11 +1,22 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Param, Post, Res } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  Post,
+  Put,
+  Res,
+} from '@nestjs/common';
 import { type Response } from 'express';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { Public } from '../common/decorators/public.decorator';
 import { PrismaService } from '@prisma/prisma.service';
-import { logger } from '@/common';
 import { CreateAuthDto } from './dto/create-auth.dto';
+import { UpdateAuthDto } from '@/auth/dto/update-auth.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -30,10 +41,19 @@ export class AuthController {
     return this.authService.register(createAuthDto);
   }
 
+  @Put('user/:id')
+  async updateUser(@Param('id') id: string, @Body() updateAuthDto: UpdateAuthDto) {
+    return this.authService.update(id, updateAuthDto);
+  }
+
+  @Delete('user/:id')
+  async deleteUser(@Param('id') id: string) {
+    return this.authService.delete(id);
+  }
+
   @Get('findAll/:param')
   @HttpCode(HttpStatus.OK)
   async findAll(@Param('param') param: keyof PrismaService) {
-    logger.debug(param as string);
     return this.authService.findAll(param);
   }
 }

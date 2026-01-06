@@ -23,13 +23,51 @@ export class AuthService {
   ) {}
 
   async register(createAuthDto: CreateAuthDto): Promise<AuthResponse> {
-    // Verificar si el usuario ya existe
-    const existingUser = await this.prisma.usuario.findUnique({
+    // Verificar si el rol existe
+    const rol = await this.prisma.rol.findUnique({
+      where: { id: createAuthDto.rolId },
+    });
+
+    if (!rol) {
+      throw new NotFoundException('El rol especificado no existe');
+    }
+
+    // Verificar si el área existe
+    const area = await this.prisma.area.findUnique({
+      where: { id: createAuthDto.areaId },
+    });
+
+    if (!area) {
+      throw new NotFoundException('El área especificada no existe');
+    }
+
+    // Verificar si el correo ya está registrado
+    const existingUserByCorreo = await this.prisma.usuario.findUnique({
       where: { correo: createAuthDto.correo },
     });
 
-    if (existingUser) {
+    if (existingUserByCorreo) {
       throw new ConflictException('El correo ya está registrado');
+    }
+
+    // Verificar si el documento ya está registrado
+    const existingUserByDocumento = await this.prisma.usuario.findUnique({
+      where: { documento: createAuthDto.documento },
+    });
+
+    if (existingUserByDocumento) {
+      throw new ConflictException('El documento ya está registrado');
+    }
+
+    // Verificar si el teléfono ya está registrado (si se proporciona)
+    if (createAuthDto.telefono) {
+      const existingUserByTelefono = await this.prisma.usuario.findUnique({
+        where: { telefono: createAuthDto.telefono },
+      });
+
+      if (existingUserByTelefono) {
+        throw new ConflictException('El teléfono ya está registrado');
+      }
     }
 
     // Hash de la contraseña
@@ -41,13 +79,29 @@ export class AuthService {
         ...createAuthDto,
         contrasena: hashedPassword,
       },
-      include: { rol: true, area: true },
+      include: {
+        rol: {
+          select: {
+            id: true,
+            nombre: true,
+            descripcion: true,
+          },
+        },
+        area: {
+          select: {
+            id: true,
+            nombre: true,
+            descripcion: true,
+          },
+        },
+      },
     });
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { contrasena, ...userWithoutPassword } = usuario;
+
     return {
-      data: {
-        ...usuario,
-      },
+      data: userWithoutPassword,
     };
   }
 
@@ -149,7 +203,15 @@ export class AuthService {
         tipoDocumento: true,
         documento: true,
         telefono: true,
+        estado: true,
         rol: {
+          select: {
+            id: true,
+            nombre: true,
+            descripcion: true,
+          },
+        },
+        area: {
           select: {
             id: true,
             nombre: true,
@@ -181,7 +243,32 @@ export class AuthService {
   async findOne(id: string) {
     const usuario = await this.prisma.usuario.findUnique({
       where: { id },
-      include: { rol: true },
+      select: {
+        id: true,
+        correo: true,
+        nombre: true,
+        apellido: true,
+        tipoDocumento: true,
+        documento: true,
+        telefono: true,
+        estado: true,
+        areaId: true,
+        rolId: true,
+        rol: {
+          select: {
+            id: true,
+            nombre: true,
+            descripcion: true,
+          },
+        },
+        area: {
+          select: {
+            id: true,
+            nombre: true,
+            descripcion: true,
+          },
+        },
+      },
     });
 
     if (!usuario) {
@@ -192,24 +279,125 @@ export class AuthService {
   }
 
   async update(id: string, updateAuthDto: UpdateAuthDto) {
-    await this.findOne(id);
+    // Verificar que el usuario existe
+    const usuario = await this.prisma.usuario.findUnique({
+      where: { id },
+    });
 
-    const data = { ...updateAuthDto };
+    if (!usuario) {
+      throw new NotFoundException(`Usuario con ID ${id} no encontrado`);
+    }
+
+    // Verificar si el rol existe (si se está actualizando)
+    if (updateAuthDto.rolId) {
+      const rol = await this.prisma.rol.findUnique({
+        where: { id: updateAuthDto.rolId },
+      });
+
+      if (!rol) {
+        throw new NotFoundException('El rol especificado no existe');
+      }
+    }
+
+    // Verificar si el área existe (si se está actualizando)
+    if (updateAuthDto.areaId) {
+      const area = await this.prisma.area.findUnique({
+        where: { id: updateAuthDto.areaId },
+      });
+
+      if (!area) {
+        throw new NotFoundException('El área especificada no existe');
+      }
+    }
+
+    // Verificar si el correo ya está registrado por otro usuario
+    if (updateAuthDto.correo && updateAuthDto.correo !== usuario.correo) {
+      const existingUserByCorreo = await this.prisma.usuario.findUnique({
+        where: { correo: updateAuthDto.correo },
+      });
+
+      if (existingUserByCorreo && existingUserByCorreo.id !== id) {
+        throw new ConflictException('El correo ya está registrado por otro usuario');
+      }
+    }
+
+    // Verificar si el documento ya está registrado por otro usuario
+    if (updateAuthDto.documento && updateAuthDto.documento !== usuario.documento) {
+      const existingUserByDocumento = await this.prisma.usuario.findUnique({
+        where: { documento: updateAuthDto.documento },
+      });
+
+      if (existingUserByDocumento && existingUserByDocumento.id !== id) {
+        throw new ConflictException('El documento ya está registrado por otro usuario');
+      }
+    }
+
+    // Verificar si el teléfono ya está registrado por otro usuario
+    if (updateAuthDto.telefono && updateAuthDto.telefono !== usuario.telefono) {
+      const existingUserByTelefono = await this.prisma.usuario.findUnique({
+        where: { telefono: updateAuthDto.telefono },
+      });
+
+      if (existingUserByTelefono && existingUserByTelefono.id !== id) {
+        throw new ConflictException('El teléfono ya está registrado por otro usuario');
+      }
+    }
+
+    // Preparar datos para actualizar
+    const data: any = { ...updateAuthDto };
+
+    // Hash de la contraseña si se proporciona
     if (updateAuthDto.contrasena) {
       data.contrasena = await bcrypt.hash(updateAuthDto.contrasena, 10);
     }
 
-    const usuario = await this.prisma.usuario.update({
+    // Actualizar usuario
+    const updatedUser = await this.prisma.usuario.update({
       where: { id },
       data,
-      include: { rol: true },
+      include: {
+        rol: {
+          select: {
+            id: true,
+            nombre: true,
+            descripcion: true,
+          },
+        },
+        area: {
+          select: {
+            id: true,
+            nombre: true,
+            descripcion: true,
+          },
+        },
+      },
     });
-    return usuario;
+
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { contrasena, ...userWithoutPassword } = updatedUser;
+
+    return {
+      data: userWithoutPassword,
+      message: 'Usuario actualizado correctamente',
+    };
   }
 
-  async remove(id: string) {
-    await this.findOne(id);
-    const usuario = await this.prisma.usuario.delete({ where: { id } });
-    return usuario;
+  async delete(id: string) {
+    // Verificar que el usuario existe
+    const usuario = await this.prisma.usuario.findUnique({
+      where: { id },
+    });
+
+    if (!usuario) {
+      throw new NotFoundException(`Usuario con ID ${id} no encontrado`);
+    }
+
+    // Eliminar usuario
+    await this.prisma.usuario.delete({ where: { id } });
+
+    return {
+      data: null,
+      message: 'Usuario eliminado correctamente',
+    };
   }
 }
