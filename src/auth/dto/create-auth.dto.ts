@@ -1,5 +1,5 @@
 import { IsString, IsEmail, IsEnum, IsInt, MinLength, IsNotEmpty } from 'class-validator';
-import { tipoDocumento } from '../../generated/prisma/client';
+import { TipoDocumento } from '../../generated/prisma/client';
 
 export class CreateAuthDto {
   @IsString()
@@ -15,8 +15,8 @@ export class CreateAuthDto {
   @IsNotEmpty()
   apellido: string;
 
-  @IsEnum(tipoDocumento)
-  tipo_documento: tipoDocumento;
+  @IsEnum(TipoDocumento)
+  tipoDocumento: TipoDocumento;
 
   @IsString()
   @IsNotEmpty()

@@ -146,7 +146,7 @@ export class AuthService {
         correo: true,
         nombre: true,
         apellido: true,
-        tipo_documento: true,
+        tipoDocumento: true,
         documento: true,
         telefono: true,
         rol: {
