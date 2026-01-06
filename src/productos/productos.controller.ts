@@ -12,9 +12,9 @@ export class ProductosController {
     return this.productosService.create(createProductoDto);
   }
 
-  @Get(':id_concepto_contable')
-  findAll(id_cuenta_contable: number) {
-    return this.productosService.findAll(id_cuenta_contable);
+  @Get(':conceptoContableId')
+  findAll(@Param('conceptoContableId') conceptoContableId: number) {
+    return this.productosService.findAll(conceptoContableId);
   }
 
   @Get(':id')

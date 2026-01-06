@@ -13,7 +13,7 @@ export class ConceptosController {
   }
 
   @Get(':idCuentaContable')
-  findAll(idCuentaContable: number) {
+  findAll(@Param('idCuentaContable') idCuentaContable: number) {
     return this.conceptosService.findAll(idCuentaContable);
   }
 

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { CreateProductoDto } from './dto/create-producto.dto';
 import { UpdateProductoDto } from './dto/update-producto.dto';
 import { PrismaService } from '@prisma/prisma.service';
@@ -17,19 +17,24 @@ export class ProductosService {
   }
 
   async findAll(conceptoContableId: number) {
-    const productos = await this.prisma.producto.findMany({
+    if (!conceptoContableId || isNaN(Number(conceptoContableId))) {
+      throw new BadRequestException('El concepto contable no es valido');
+    }
+    const data = await this.prisma.producto.findMany({
       where: {
         conceptoContableId,
       },
     });
 
-    if (!productos) {
-      throw new NotFoundException('Productos no encontrados para el concepto ');
+    if (!data || data.length === 0) {
+      throw new NotFoundException(
+        'No se encontraron productos para el concepto contable especificado',
+      );
     }
 
     return {
-      data: productos,
-      message: 'Productos Obtenidos',
+      data,
+      message: 'Productos obtenidos con éxito',
     };
   }
 
