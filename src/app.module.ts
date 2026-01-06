@@ -7,11 +7,19 @@ import { ProviderModule } from '@/provider/provider.module';
 import { JwtAuthGuard } from '@/common/guards/jwt-auth.guard';
 import { CuentasContablesModule } from './cuentas-contables/cuentas-contables.module';
 import { ConceptosModule } from './conceptos/conceptos.module';
-import { PresupuestoModule } from './presupuesto/presupuesto.module';
 import { ProductosModule } from './productos/productos.module';
+import { SolicitarPresupuestoModule } from './solicitar-presupuesto/solicitar-presupuesto.module';
 
 @Module({
-  imports: [PrismaModule, AuthModule, ProviderModule, CuentasContablesModule, ConceptosModule, PresupuestoModule, ProductosModule],
+  imports: [
+    PrismaModule,
+    AuthModule,
+    ProviderModule,
+    CuentasContablesModule,
+    ConceptosModule,
+    ProductosModule,
+    SolicitarPresupuestoModule,
+  ],
   controllers: [],
   providers: [
     {
