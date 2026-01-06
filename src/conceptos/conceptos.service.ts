@@ -6,19 +6,25 @@ import { PrismaService } from '@prisma/prisma.service';
 @Injectable()
 export class ConceptosService {
   constructor(private readonly prisma: PrismaService) {}
-  create(createConceptoDto: CreateConceptoDto) {
-    return 'This action adds a new concepto';
+  async create(createConceptoDto: CreateConceptoDto) {
+    const data = await this.prisma.conceptoContable.create({
+      data: createConceptoDto,
+    });
+    return {
+      data,
+      message: 'Concepto contable creado con exito',
+    };
   }
 
   async findAll(idCuentaContable: number) {
-    const data = await this.prisma.concepto_contable.findMany({
+    const data = await this.prisma.conceptoContable.findMany({
       where: {
-        id_cuenta_contable: idCuentaContable,
+        cuentaContableId: idCuentaContable,
       },
     });
     return {
       data,
-      message: 'Cunetas contables obtendias con exito',
+      message: 'Conceptos contables obtendias con exito',
     };
   }
 
@@ -26,8 +32,15 @@ export class ConceptosService {
     return `This action returns a #${id} concepto`;
   }
 
-  update(id: number, updateConceptoDto: UpdateConceptoDto) {
-    return `This action updates a #${id} concepto`;
+  async update(id: number, updateConceptoDto: UpdateConceptoDto) {
+    const data = await this.prisma.conceptoContable.update({
+      where: { id },
+      data: updateConceptoDto,
+    });
+    return {
+      data,
+      message: 'Concepto contable actualizado con exito',
+    };
   }
 
   remove(id: number) {

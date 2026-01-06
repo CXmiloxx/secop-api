@@ -6,23 +6,48 @@ import { PrismaService } from '@prisma/prisma.service';
 @Injectable()
 export class CuentasContablesService {
   constructor(private readonly prisma: PrismaService) {}
-  create(createCuentasContableDto: CreateCuentasContableDto) {
-    return 'This action adds a new cuentasContable';
+  async create(createCuentasContableDto: CreateCuentasContableDto) {
+    const data = await this.prisma.cuentaContable.create({
+      data: createCuentasContableDto,
+    });
+    return {
+      data,
+      message: 'Cuenta contable creada con exito',
+    };
   }
 
   async findAll() {
-    return await this.prisma.cuenta_contable.findMany();
+    return await this.prisma.cuentaContable.findMany();
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} cuentasContable`;
+  async findOne(id: number) {
+    const data = await this.prisma.cuentaContable.findUnique({
+      where: { id },
+    });
+    return {
+      data,
+      message: 'Cuenta contable obtenida con exito',
+    };
   }
 
-  update(id: number, updateCuentasContableDto: UpdateCuentasContableDto) {
-    return `This action updates a #${id} cuentasContable`;
+  async update(id: number, updateCuentasContableDto: UpdateCuentasContableDto) {
+    const data = await this.prisma.cuentaContable.update({
+      where: { id },
+      data: updateCuentasContableDto,
+    });
+    return {
+      data,
+      message: 'Cuenta contable actualizada con exito',
+    };
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} cuentasContable`;
+  async remove(id: number) {
+    const data = await this.prisma.cuentaContable.delete({
+      where: { id },
+    });
+    return {
+      data,
+      message: 'Cuenta contable eliminada con exito',
+    };
   }
 }

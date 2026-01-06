@@ -6,14 +6,20 @@ import { PrismaService } from '@prisma/prisma.service';
 @Injectable()
 export class ProductosService {
   constructor(private readonly prisma: PrismaService) {}
-  create(createProductoDto: CreateProductoDto) {
-    return 'This action adds a new producto';
+  async create(createProductoDto: CreateProductoDto) {
+    const producto = await this.prisma.producto.create({
+      data: createProductoDto,
+    });
+    return {
+      data: producto,
+      message: 'Producto creado con exito',
+    };
   }
 
-  async findAll(id_concepto_contable: number) {
+  async findAll(conceptoContableId: number) {
     const productos = await this.prisma.producto.findMany({
       where: {
-        id_concepto_contable,
+        conceptoContableId,
       },
     });
 
@@ -31,11 +37,24 @@ export class ProductosService {
     return `This action returns a #${id} producto`;
   }
 
-  update(id: number, updateProductoDto: UpdateProductoDto) {
-    return `This action updates a #${id} producto`;
+  async update(id: number, updateProductoDto: UpdateProductoDto) {
+    const producto = await this.prisma.producto.update({
+      where: { id },
+      data: updateProductoDto,
+    });
+    return {
+      data: producto,
+      message: 'Producto actualizado con exito',
+    };
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} producto`;
+  async remove(id: number) {
+    const producto = await this.prisma.producto.delete({
+      where: { id },
+    });
+    return {
+      data: producto,
+      message: 'Producto eliminado con exito',
+    };
   }
 }
