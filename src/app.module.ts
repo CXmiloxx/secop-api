@@ -11,6 +11,7 @@ import { ProductosModule } from '@/productos/productos.module';
 import { SolicitudPresupuestoModule } from '@/solicitud-presupuesto/solicitud-presupuesto.module';
 import { PresupuestoModule } from './presupuesto/presupuesto.module';
 import { PresupuestoGeneralModule } from './presupuesto-general/presupuesto-general.module';
+import { AreasModule } from './areas/areas.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { PresupuestoGeneralModule } from './presupuesto-general/presupuesto-gene
     SolicitudPresupuestoModule,
     PresupuestoModule,
     PresupuestoGeneralModule,
+    AreasModule,
   ],
   controllers: [],
   providers: [
