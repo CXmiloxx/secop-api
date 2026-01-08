@@ -9,6 +9,8 @@ import { CuentasContablesModule } from '@/cuentas-contables/cuentas-contables.mo
 import { ConceptosModule } from '@/conceptos/conceptos.module';
 import { ProductosModule } from '@/productos/productos.module';
 import { SolicitudPresupuestoModule } from '@/solicitud-presupuesto/solicitud-presupuesto.module';
+import { PresupuestoModule } from './presupuesto/presupuesto.module';
+import { PresupuestoGeneralModule } from './presupuesto-general/presupuesto-general.module';
 
 @Module({
   imports: [
@@ -19,6 +21,8 @@ import { SolicitudPresupuestoModule } from '@/solicitud-presupuesto/solicitud-pr
     ConceptosModule,
     ProductosModule,
     SolicitudPresupuestoModule,
+    PresupuestoModule,
+    PresupuestoGeneralModule,
   ],
   controllers: [],
   providers: [
