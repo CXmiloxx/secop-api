@@ -1,10 +1,7 @@
 import { ArticuloSolicitudPresupuesto } from '@/generated/prisma/client';
-import { EstadoPresupuesto } from '@/generated/prisma/enums';
 import {
   IsArray,
   IsDateString,
-  IsDecimal,
-  IsEnum,
   IsInt,
   IsNotEmpty,
   IsNumber,
@@ -19,7 +16,7 @@ export class CreateSolicitudPresupuestoDto {
 
   @IsInt()
   @IsNotEmpty()
-  periodoId: number;
+  periodo: number;
 
   @IsOptional()
   @IsString()
@@ -29,28 +26,26 @@ export class CreateSolicitudPresupuestoDto {
   @IsNotEmpty()
   usuarioSolicitanteId: string;
 
-  @IsEnum(EstadoPresupuesto)
-  @IsNotEmpty()
-  estado: EstadoPresupuesto;
-
-  @IsDecimal()
-  @IsNotEmpty()
-  montoSolicitado: string;
-
-  @IsInt()
-  @IsNotEmpty()
-  porcentajeAprobacion: number;
-
   @IsNumber()
   @IsNotEmpty()
-  montoAprobado: number;
+  montoSolicitado: number;
+
+  @IsOptional()
+  @IsInt()
+  porcentajeAprobacion?: number;
+
+  @IsOptional()
+  @IsNumber()
+  montoAprobado?: number;
 
   @IsString()
-  aprobadoPorId: string;
+  @IsOptional()
+  aprobadoPorId?: string;
 
   @IsDateString()
   @IsNotEmpty()
-  fechaAprobacion: string;
+  @IsOptional()
+  fechaAprobacion?: string;
 
   @IsArray()
   @IsNotEmpty()

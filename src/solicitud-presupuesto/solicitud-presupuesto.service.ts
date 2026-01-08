@@ -6,6 +6,7 @@ import { PrismaService } from '@prisma/prisma.service';
 @Injectable()
 export class SolicitudPresupuestoService {
   constructor(private readonly prisma: PrismaService) {}
+
   async create(createSolicitudPresupuestoDto: CreateSolicitudPresupuestoDto) {
     const usuarioSolicitante = await this.prisma.usuario.findUnique({
       where: { id: createSolicitudPresupuestoDto.usuarioSolicitanteId },
@@ -19,24 +20,12 @@ export class SolicitudPresupuestoService {
       throw new BadRequestException('No puedes solicitar presupuesto para otra área');
     }
 
-    //2. Verificar si el usuario tiene presupuesto disponible
-    const presupuestoDisponible = await this.prisma.presupuesto.findFirst({
-      where: {
-        areaId: createSolicitudPresupuestoDto.areaId,
-        periodoId: createSolicitudPresupuestoDto.periodoId,
-      },
-    });
-
-    if (!presupuestoDisponible) {
-      throw new BadRequestException('No hay presupuesto disponible para este periodo');
-    }
-
     // 3. Crear solicitud + ítems (en transacción)
     const solicitud = await this.prisma.$transaction(async (tx) => {
       const nuevaSolicitud = await tx.solicitudPresupuesto.create({
         data: {
           areaId: createSolicitudPresupuestoDto.areaId,
-          periodoId: createSolicitudPresupuestoDto.periodoId,
+          periodo: createSolicitudPresupuestoDto.periodo,
           usuarioSolicitanteId: createSolicitudPresupuestoDto.usuarioSolicitanteId,
           estado: 'PENDIENTE',
           montoSolicitado: createSolicitudPresupuestoDto.montoSolicitado,
@@ -48,11 +37,9 @@ export class SolicitudPresupuestoService {
       await tx.articuloSolicitudPresupuesto.createMany({
         data: createSolicitudPresupuestoDto.articulos.map((item) => ({
           solicitudId: nuevaSolicitud.id,
-          productoId: item.productoId,
           conceptoContableId: item.conceptoContableId,
           cuentaContableId: item.cuentaContableId,
-          cantidadSolicitada: item.cantidadSolicitada,
-          valorUnitario: item.valorUnitario,
+          valorEstimado: item.valorEstimado,
         })),
       });
 
@@ -64,16 +51,120 @@ export class SolicitudPresupuestoService {
     };
   }
 
-  findAll() {
-    return `This action returns all solicitarPresupuesto`;
+  async findAll() {
+    const data = await this.prisma.solicitudPresupuesto.findMany({
+      select: {
+        id: true,
+        periodo: true,
+        montoSolicitado: true,
+        createdAt: true,
+        estado: true,
+        articulos: {
+          select: {
+            conceptoContable: {
+              select: {
+                nombre: true,
+              },
+            },
+            cuentaContable: {
+              select: {
+                nombre: true,
+              },
+            },
+            valorEstimado: true,
+          },
+        },
+        usuarioSolicitante: {
+          select: {
+            id: true,
+            nombre: true,
+          },
+        },
+        area: {
+          select: {
+            id: true,
+            nombre: true,
+          },
+        },
+      },
+    });
+
+    return {
+      data,
+      message: 'Solicitudes de presupuesto obtenidas con éxito',
+    };
   }
 
   findOne(id: number) {
     return `This action returns a #${id} solicitarPresupuesto`;
   }
 
-  update(id: number, updateSolicitudPresupuestoDto: UpdateSolicitudPresupuestoDto) {
-    return `This action updates a #${id} solicitudPresupuesto: ${JSON.stringify(updateSolicitudPresupuestoDto)}`;
+  async update(id: number, dto: UpdateSolicitudPresupuestoDto) {
+    return this.prisma.$transaction(async (tx) => {
+      const solicitud = await tx.solicitudPresupuesto.findUnique({
+        where: { id },
+      });
+
+      if (!solicitud) {
+        throw new BadRequestException('Solicitud no encontrada');
+      }
+
+      if (solicitud.estado === 'APROBADO') {
+        throw new BadRequestException('Esta solicitud ya fue aprobada');
+      }
+
+      // 1. Aprobar solicitud
+      await tx.solicitudPresupuesto.update({
+        where: { id },
+        data: {
+          estado: 'APROBADO',
+          montoAprobado: dto.montoAprobado,
+          porcentajeAprobacion: dto.porcentajeAprobacion,
+          aprobadoPorId: dto.aprobadoPorId,
+          fechaAprobacion: dto.fechaAprobacion,
+        },
+      });
+
+      // 2. Presupuesto del área (acumulativo)
+      await tx.presupuesto.upsert({
+        where: {
+          areaId_periodo: {
+            areaId: solicitud.areaId,
+            periodo: solicitud.periodo,
+          },
+        },
+        update: {
+          presupuestoAnual: { increment: dto.montoAprobado },
+          saldoDisponible: { increment: dto.montoAprobado },
+        },
+        create: {
+          areaId: solicitud.areaId,
+          periodo: solicitud.periodo,
+          presupuestoAnual: dto.montoAprobado ?? 0,
+          totalGastado: 0,
+          montoComprometido: 0,
+          saldoDisponible: dto.montoAprobado,
+        },
+      });
+
+      // 3. Presupuesto general (suma global)
+      await tx.presupuestoGeneral.upsert({
+        where: { periodo: solicitud.periodo },
+        update: {
+          presupuestoTotal: { increment: dto.montoAprobado },
+          saldoDisponible: { increment: dto.montoAprobado },
+        },
+        create: {
+          periodo: solicitud.periodo,
+          presupuestoTotal: dto.montoAprobado ?? 0,
+          totalEjecutado: 0,
+          montoComprometido: 0,
+          saldoDisponible: dto.montoAprobado ?? 0,
+        },
+      });
+
+      return { message: 'Solicitud aprobada y presupuestos actualizados' };
+    });
   }
 
   remove(id: number) {

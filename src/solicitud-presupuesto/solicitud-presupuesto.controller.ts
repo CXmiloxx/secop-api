@@ -24,10 +24,10 @@ export class SolicitudPresupuestoController {
 
   @Patch(':id')
   update(
-    @Param('id') id: string,
+    @Param('id') id: number,
     @Body() updateSolicitudPresupuestoDto: UpdateSolicitudPresupuestoDto,
   ) {
-    return this.solicitudPresupuestoService.update(+id, updateSolicitudPresupuestoDto);
+    return this.solicitudPresupuestoService.update(id, updateSolicitudPresupuestoDto);
   }
 
   @Delete(':id')
