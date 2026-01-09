@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Query } from '@nestjs/common';
 import { ProductosService } from './productos.service';
 import { CreateProductoDto } from './dto/create-producto.dto';
 import { UpdateProductoDto } from './dto/update-producto.dto';
@@ -15,6 +15,11 @@ export class ProductosController {
   @Get(':conceptoContableId')
   findAll(@Param('conceptoContableId') conceptoContableId: number) {
     return this.productosService.findAll(conceptoContableId);
+  }
+
+  @Get('productos-permitidos')
+  async productosPermitidosByConcepto(@Query('conceptoContableId') conceptoContableId: number) {
+    return await this.productosService.productosPermitidosByConcepto(conceptoContableId);
   }
 
   @Get(':id')

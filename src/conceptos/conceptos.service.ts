@@ -6,6 +6,7 @@ import { PrismaService } from '@prisma/prisma.service';
 @Injectable()
 export class ConceptosService {
   constructor(private readonly prisma: PrismaService) {}
+
   async create(createConceptoDto: CreateConceptoDto) {
     const data = await this.prisma.conceptoContable.create({
       data: createConceptoDto,
@@ -36,6 +37,38 @@ export class ConceptosService {
     return {
       data,
       message: 'Conceptos contables obtenidos con éxito',
+    };
+  }
+
+  async conceptosPermitidosByCuenta(areaId: number, periodo: number, cuentaContableId: number) {
+    const solicitud = await this.prisma.solicitudPresupuesto.findFirst({
+      where: {
+        areaId,
+        periodo,
+        estado: 'APROBADO',
+      },
+      include: {
+        articulos: {
+          include: {
+            conceptoContable: true,
+          },
+        },
+      },
+    });
+
+    if (!solicitud) return [];
+
+    const conceptosMap = new Map();
+
+    solicitud.articulos.forEach((a) => {
+      if (a.conceptoContable.cuentaContableId === cuentaContableId) {
+        conceptosMap.set(a.conceptoContable.id, a.conceptoContable);
+      }
+    });
+
+    return {
+      data: Array.from(conceptosMap.values()),
+      message: 'Conceptos contables permitidos',
     };
   }
 

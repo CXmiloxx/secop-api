@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Query } from '@nestjs/common';
 import { CuentasContablesService } from './cuentas-contables.service';
 import { CreateCuentasContableDto } from './dto/create-cuentas-contable.dto';
 import { UpdateCuentasContableDto } from './dto/update-cuentas-contable.dto';
@@ -15,6 +15,14 @@ export class CuentasContablesController {
   @Get()
   findAll() {
     return this.cuentasContablesService.findAll();
+  }
+
+  @Get('cuentas-permitidas')
+  async cuentasPermitidasByArea(
+    @Query('areaId') areaId: number,
+    @Query('periodo') periodo: number,
+  ) {
+    return await this.cuentasContablesService.cuentasPermitidasByArea(areaId, periodo);
   }
 
   @Get(':id')

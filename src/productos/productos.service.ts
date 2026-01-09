@@ -6,6 +6,7 @@ import { PrismaService } from '@prisma/prisma.service';
 @Injectable()
 export class ProductosService {
   constructor(private readonly prisma: PrismaService) {}
+
   async create(createProductoDto: CreateProductoDto) {
     const producto = await this.prisma.producto.create({
       data: createProductoDto,
@@ -35,6 +36,19 @@ export class ProductosService {
     return {
       data,
       message: 'Productos obtenidos con éxito',
+    };
+  }
+
+  async productosPermitidosByConcepto(conceptoContableId: number) {
+    const productos = await this.prisma.producto.findMany({
+      where: {
+        conceptoContableId,
+      },
+    });
+
+    return {
+      data: productos,
+      message: 'Productos permitidos',
     };
   }
 

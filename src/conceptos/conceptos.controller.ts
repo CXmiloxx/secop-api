@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Query } from '@nestjs/common';
 import { ConceptosService } from './conceptos.service';
 import { CreateConceptoDto } from './dto/create-concepto.dto';
 import { UpdateConceptoDto } from './dto/update-concepto.dto';
@@ -12,9 +12,22 @@ export class ConceptosController {
     return this.conceptosService.create(createConceptoDto);
   }
 
+  @Get('permitidos')
+  async conceptosPermitidosByCuenta(
+    @Query('areaId') areaId: number,
+    @Query('periodo') periodo: number,
+    @Query('cuentaContableId') cuentaContableId: number,
+  ) {
+    return await this.conceptosService.conceptosPermitidosByCuenta(
+      +areaId,
+      +periodo,
+      +cuentaContableId,
+    );
+  }
+
   @Get(':idCuentaContable')
-  findAll(@Param('idCuentaContable') idCuentaContable: number) {
-    return this.conceptosService.findAll(idCuentaContable);
+  findAll(@Param('idCuentaContable') idCuentaContable: string) {
+    return this.conceptosService.findAll(+idCuentaContable);
   }
 
   @Get(':id')

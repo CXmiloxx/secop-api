@@ -6,6 +6,7 @@ import { PrismaService } from '@prisma/prisma.service';
 @Injectable()
 export class CuentasContablesService {
   constructor(private readonly prisma: PrismaService) {}
+
   async create(createCuentasContableDto: CreateCuentasContableDto) {
     const data = await this.prisma.cuentaContable.create({
       data: createCuentasContableDto,
@@ -18,6 +19,42 @@ export class CuentasContablesService {
 
   async findAll() {
     return await this.prisma.cuentaContable.findMany();
+  }
+
+  async cuentasPermitidasByArea(areaId: number, periodo: number) {
+    const solicitud = await this.prisma.solicitudPresupuesto.findFirst({
+      where: {
+        areaId,
+        periodo,
+        estado: 'APROBADO',
+      },
+      include: {
+        articulos: {
+          include: {
+            conceptoContable: {
+              include: {
+                cuentaContable: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!solicitud) return [];
+
+    // eliminar duplicados
+    const cuentasMap = new Map();
+
+    solicitud.articulos.forEach((a) => {
+      const cuenta = a.conceptoContable.cuentaContable;
+      cuentasMap.set(cuenta.id, cuenta);
+    });
+
+    return {
+      data: Array.from(cuentasMap.values()),
+      message: 'Cuentas contables permitidas',
+    };
   }
 
   async findOne(id: number) {
