@@ -13,6 +13,7 @@ import { PresupuestoModule } from './presupuesto/presupuesto.module';
 import { PresupuestoGeneralModule } from './presupuesto-general/presupuesto-general.module';
 import { AreasModule } from './areas/areas.module';
 import { RequisicionModule } from './requisicion/requisicion.module';
+import { FilesModule } from './files/files.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { RequisicionModule } from './requisicion/requisicion.module';
     PresupuestoGeneralModule,
     AreasModule,
     RequisicionModule,
+    FilesModule,
   ],
   controllers: [],
   providers: [
