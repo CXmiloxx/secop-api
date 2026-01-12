@@ -51,8 +51,11 @@ export class SolicitudPresupuestoService {
     };
   }
 
-  async findAll() {
+  async findAll(periodo: number) {
     const data = await this.prisma.solicitudPresupuesto.findMany({
+      where: {
+        periodo,
+      },
       select: {
         id: true,
         periodo: true,
@@ -63,11 +66,13 @@ export class SolicitudPresupuestoService {
           select: {
             conceptoContable: {
               select: {
+                id: true,
                 nombre: true,
               },
             },
             cuentaContable: {
               select: {
+                id: true,
                 nombre: true,
               },
             },
@@ -162,6 +167,20 @@ export class SolicitudPresupuestoService {
           saldoDisponible: dto.montoAprobado ?? 0,
         },
       });
+      //4. Actualizar los valores aprobados de los articulos de la solicitud
+      for (const item of dto?.articulos ?? []) {
+        await tx.articuloSolicitudPresupuesto.update({
+          where: {
+            solicitudId_cuentaContableId: {
+              solicitudId: id,
+              cuentaContableId: item.cuentaContableId,
+            },
+          },
+          data: {
+            valorAprobado: item.valorAprobado,
+          },
+        });
+      }
 
       return { message: 'Solicitud aprobada y presupuestos actualizados' };
     });

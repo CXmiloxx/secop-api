@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Query } from '@nestjs/common';
 import { SolicitudPresupuestoService } from '@/solicitud-presupuesto/solicitud-presupuesto.service';
 import { CreateSolicitudPresupuestoDto } from '@/solicitud-presupuesto/dto/create-solicitud-presupuesto.dto';
 import { UpdateSolicitudPresupuestoDto } from '@/solicitud-presupuesto/dto/update-solicitud-presupuesto.dto';
@@ -13,8 +13,8 @@ export class SolicitudPresupuestoController {
   }
 
   @Get()
-  findAll() {
-    return this.solicitudPresupuestoService.findAll();
+  findAll(@Query('periodo') periodo: number) {
+    return this.solicitudPresupuestoService.findAll(periodo);
   }
 
   @Get(':id')

@@ -23,8 +23,8 @@ export class PresupuestoController {
   }
 
   @Get('area/:areaId')
-  async findByAreaId(@Param('areaId') areaId: string) {
-    return await this.presupuestoService.findByAreaId(+areaId);
+  async findByAreaId(@Param('areaId') areaId: number, @Query('periodo') periodo: number) {
+    return await this.presupuestoService.findByAreaId(areaId, periodo);
   }
 
   @Patch(':id')

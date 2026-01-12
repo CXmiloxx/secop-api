@@ -38,9 +38,9 @@ export class PresupuestoService {
     });
   }
 
-  async findByAreaId(areaId: number) {
+  async findByAreaId(areaId: number, periodo: number) {
     const data = await this.prisma.presupuesto.findFirst({
-      where: { areaId },
+      where: { areaId, periodo },
       include: {
         area: {
           select: {
@@ -50,6 +50,10 @@ export class PresupuestoService {
         },
       },
     });
+
+    if (!data) {
+      throw new NotFoundException(`No se encontró presupuesto para del area el periodo ${periodo}`);
+    }
 
     return {
       data,
