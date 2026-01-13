@@ -63,10 +63,16 @@ const FORMATOS_CONFIG = {
 
 const UPLOADS_DIR = './uploads';
 
-// Asegurar que el directorio base existe solo si está permitido (permiso true por defecto)
+// Asegurar que el directorio base existe o lo crea si está permitido (permiso true por defecto)
+// También descargará (creará) recursivamente toda la carpeta y subcarpetas necesarias
 function asegurarDirectorio(path: string, permitido = true) {
   if (permitido && !existsSync(path)) {
-    mkdirSync(path, { recursive: true });
+    try {
+      // Se asegura que se crea toda la ruta, incluida la carpeta ./uploads si no existe
+      mkdirSync(path, { recursive: true });
+    } catch (error) {
+      throw new Error(`No se pudo crear el directorio '${path}': ${error}`);
+    }
   }
 }
 
@@ -92,15 +98,24 @@ export function createMulterConfig(
 ): MulterOptions {
   const uploadPath = join(UPLOADS_DIR, subdir);
 
-  // Solo crea subdirectorio si está permitido
-  asegurarDirectorio(uploadPath, permiteCrearCarpeta);
+  // Asegura la existencia tanto de la carpeta base 'uploads' como del subdirectorio dado
+  if (permiteCrearCarpeta) {
+    asegurarDirectorio(UPLOADS_DIR, true);
+    asegurarDirectorio(uploadPath, true);
+  }
 
   const storage: StorageEngine = diskStorage({
     destination: (req: Request, file: Express.Multer.File, callback: FilenameCallback) => {
-      // Verificar otra vez si lo desea
-      if (permiteCrearCarpeta && !existsSync(uploadPath)) {
+      if (permiteCrearCarpeta) {
         try {
-          mkdirSync(uploadPath, { recursive: true });
+          // Asegura primero la carpeta uploads y luego el subdirectorio
+          if (!existsSync(UPLOADS_DIR)) {
+            asegurarDirectorio(UPLOADS_DIR, true);
+          }
+          // Reasegura subdirectorio
+          if (!existsSync(uploadPath)) {
+            asegurarDirectorio(uploadPath, true);
+          }
         } catch (error) {
           return callback(new Error(`No se pudo crear el directorio para uploads: ${error}`), '');
         }
