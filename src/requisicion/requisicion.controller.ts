@@ -32,7 +32,7 @@ export class RequisicionController {
     return await this.requisicionService.findAllByArea(areaId, periodo);
   }
 
-  @Get('periodo')
+  @Get('all')
   async findAll(@Query('periodo') periodo: number) {
     return await this.requisicionService.findAll(periodo);
   }
@@ -50,21 +50,30 @@ export class RequisicionController {
     return this.requisicionService.findOne(+id);
   }
 
-  @Patch(':id/aprobar')
+  @Patch('aprobar/:id')
   aprobarRequisicion(@Param('id') id: string, @Body() updateRequisicionDto: UpdateRequisicionDto) {
     return this.requisicionService.aprobarRequisicion(+id, updateRequisicionDto);
   }
 
-  @Post(':requisicionId/soportes-cotizacion')
+  @Post('soportes-cotizacion/:requisicionId')
   @UseInterceptors(FilesInterceptor('files', 3, cotizacionMulterConfig))
   async createSoportes(
-    @Param('requisicionId') requisicionId: string,
+    @Param('requisicionId') requisicionId: number,
     @UploadedFiles() files: Express.Multer.File[],
   ) {
-    return this.requisicionService.createSoportes(+requisicionId, files);
+    return this.requisicionService.createSoportes(requisicionId, files);
   }
 
-  @Patch(':requisicionId/rechazar')
+  @Patch('soportes-cotizacion/:requisicionId')
+  @UseInterceptors(FilesInterceptor('files', 3, cotizacionMulterConfig))
+  async actualizarSoportes(
+    @Param('requisicionId') requisicionId: number,
+    @UploadedFiles() files: Express.Multer.File[],
+  ) {
+    return await this.requisicionService.actualizarSoportesCotizaciones(requisicionId, files);
+  }
+
+  @Patch('rechazar/:requisicionId')
   async rechazarRequisicion(
     @Param('requisicionId') requisicionId: number,
     @Body() rechazarRequisicionDto: RechazarRequisicionDto,

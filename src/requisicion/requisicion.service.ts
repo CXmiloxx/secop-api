@@ -4,7 +4,9 @@ import { UpdateRequisicionDto } from './dto/update-requisicion.dto';
 import { PrismaService } from '@prisma/prisma.service';
 import { CreateCommentDto } from '@/requisicion/dto/create-comment.dto';
 import { RechazarRequisicionDto } from '@/requisicion/dto/rechazar-requizicion.dto';
-
+import { existsSync } from 'fs';
+import { unlink } from 'fs/promises';
+import { logger } from '@/common';
 @Injectable()
 export class RequisicionService {
   constructor(private readonly prisma: PrismaService) {}
@@ -40,8 +42,8 @@ export class RequisicionService {
         'No existe un valor aprobado para este concepto en el área y periodo seleccionados',
       );
     }
-
-    const comprometido = await this.prisma.requisicion.aggregate({
+    //validacion para el valor que puede solicitar por concepto
+    /*     const comprometido = await this.prisma.requisicion.aggregate({
       _sum: {
         valorPresupuestado: true,
       },
@@ -69,8 +71,24 @@ export class RequisicionService {
       throw new BadRequestException(
         `El valor de la requisición (${dto.valorPresupuestado}) excede el valor disponible para este concepto (${disponible})`,
       );
-    }
+    } */
 
+    const presupuestoDisponible = await this.prisma.presupuesto.findFirst({
+      where: {
+        areaId: dto.areaId,
+        periodo: dto.periodo,
+      },
+      select: {
+        saldoDisponible: true,
+        montoComprometido: true,
+      },
+    });
+
+    if (dto.valorPresupuestado > Number(presupuestoDisponible?.saldoDisponible)) {
+      throw new BadRequestException(
+        `El valor de la requisición (${dto.valorPresupuestado}) excede el valor disponible del area (${Number(presupuestoDisponible?.saldoDisponible)})`,
+      );
+    }
     return this.prisma.$transaction(async (tx) => {
       const requisicion = await tx.requisicion.create({
         data: {
@@ -100,6 +118,14 @@ export class RequisicionService {
             periodo: dto.periodo,
           },
         },
+        data: {
+          saldoDisponible: { decrement: dto.valorPresupuestado },
+          montoComprometido: { increment: dto.valorPresupuestado },
+        },
+      });
+
+      await tx.presupuestoGeneral.update({
+        where: { periodo: dto.periodo },
         data: {
           saldoDisponible: { decrement: dto.valorPresupuestado },
           montoComprometido: { increment: dto.valorPresupuestado },
@@ -153,12 +179,11 @@ export class RequisicionService {
     });
 
     if (requisiciones.length === 0) {
-      throw new NotFoundException('No se encontraron requisiciones para el periodo ' + periodo);
+      throw new NotFoundException('No se encontraron requisiciones para el periodo' + periodo);
     }
 
     const data = requisiciones.map((req) => {
       const articulo = req.articulos[0];
-      const valorTotal = articulo ? Number(articulo.cantidad) * Number(articulo.valorUnitario) : 0;
 
       const aprobadoPor =
         req.estado === 'APROBADA'
@@ -180,7 +205,10 @@ export class RequisicionService {
         concepto: articulo?.producto.conceptoContable.nombre || 'N/A',
         producto: articulo?.producto.nombre || 'N/A',
         cantidad: articulo?.cantidad || 0,
-        valor: valorTotal.toFixed(2),
+        valorPresupuestado: req.valorPresupuestado,
+        valorDefinido: req.valorDefinido,
+        ivaPresupuestado: req.ivaPresupuestado,
+        ivaDefinido: req.ivaDefinido,
         justificacion: req.justificacion,
         aprobadoPor: aprobadoPor,
         motivoRechazo: req.motivoRechazo || null,
@@ -236,7 +264,7 @@ export class RequisicionService {
     });
 
     if (requisiciones.length === 0) {
-      throw new NotFoundException('No se encontraron requisiciones para el periodo ' + periodo);
+      throw new NotFoundException('No se encontraron requisiciones para el periodo: ' + periodo);
     }
 
     const data = requisiciones.map((req) => {
@@ -258,7 +286,9 @@ export class RequisicionService {
         producto: articulo?.producto.nombre || 'N/A',
 
         cantidad: articulo?.cantidad || 0,
+        valorUnitario: articulo?.valorUnitario || 0,
         valorPresupuestado: req.valorPresupuestado,
+        valorDefinido: req.valorDefinido,
 
         comentario: req.comentario,
         motivoRechazo: req.motivoRechazo,
@@ -303,11 +333,87 @@ export class RequisicionService {
 
     if (existentes + files.length > 3) {
       throw new BadRequestException(
-        `Esta requisición ya tiene ${existentes} soporte(s). Solo puede agregar ${3 - existentes} más`,
+        `Esta requisición ya tiene ${existentes} soporte(s). Solo puede agregar ${
+          3 - existentes
+        } más`,
       );
     }
 
-    const soportesCreados = await this.prisma.$transaction(
+    try {
+      const soportesCreados = await this.prisma.$transaction(
+        files.map((file) =>
+          this.prisma.soporteCotizacion.create({
+            data: {
+              requisicionId,
+              soporteCotizacionPath: file.path,
+            },
+          }),
+        ),
+      );
+
+      return {
+        data: soportesCreados,
+        message: `${files.length} soporte(s) cargado(s) correctamente`,
+        cantidad: files.length,
+      };
+    } catch (error) {
+      for (const file of files) {
+        if (file.path && existsSync(file.path)) {
+          try {
+            await unlink(file.path);
+          } catch (e) {
+            logger.error('Error eliminando archivo huérfano:', String(e), 'RequisicionService');
+          }
+        }
+      }
+      throw error;
+    }
+  }
+
+  async actualizarSoportesCotizaciones(requisicionId: number, files: Express.Multer.File[]) {
+    const requisicion = await this.prisma.requisicion.findUnique({
+      where: { id: requisicionId },
+    });
+
+    if (!requisicion) {
+      throw new NotFoundException('Requisición no encontrada');
+    }
+
+    if (!files || files.length === 0) {
+      throw new BadRequestException('Debe subir al menos un archivo');
+    }
+
+    if (files.length > 3) {
+      throw new BadRequestException('Solo se pueden subir hasta 3 archivos');
+    }
+
+    // 1 Obtener soportes antiguos
+    const soportesAntiguos = await this.prisma.soporteCotizacion.findMany({
+      where: { requisicionId },
+    });
+
+    // 2 Eliminar archivos físicos
+    for (const soporte of soportesAntiguos) {
+      if (soporte.soporteCotizacionPath && existsSync(soporte.soporteCotizacionPath)) {
+        try {
+          await unlink(soporte.soporteCotizacionPath);
+        } catch (error) {
+          logger.error(
+            `No se pudo eliminar el archivo ${soporte.soporteCotizacionPath}`,
+            String(error),
+            'RequisicionService',
+          );
+        }
+      }
+    }
+
+    // 3 Eliminar registros BD
+    await this.prisma.soporteCotizacion.deleteMany({
+      where: { requisicionId },
+    });
+
+    // 4 Crear nuevos soportes
+    const nuevosSoportes = await this.prisma.$transaction(
       files.map((file) =>
         this.prisma.soporteCotizacion.create({
           data: {
@@ -319,57 +425,71 @@ export class RequisicionService {
     );
 
     return {
-      data: soportesCreados,
-      message: `${files.length} soporte(s) cargado(s) correctamente`,
+      data: nuevosSoportes,
+      message: `${files.length} soporte(s) actualizado(s) correctamente`,
       cantidad: files.length,
     };
   }
 
   async aprobarRequisicion(id: number, dto: UpdateRequisicionDto) {
-    const soportes = await this.prisma.soporteCotizacion.count({
-      where: { requisicionId: id },
-    });
+    return this.prisma.$transaction(async (tx) => {
+      const soportes = await this.prisma.soporteCotizacion.findMany({
+        where: { requisicionId: id },
+      });
 
-    if (soportes < 1) {
-      throw new BadRequestException(
-        'La requisición debe tener al menos 1 soporte para ser aprobada',
-      );
-    }
+      if (soportes.length < 1) {
+        throw new BadRequestException(
+          'La requisición debe tener al menos un soporte de cotización para ser aprobada',
+        );
+      }
 
-    const data = await this.prisma.requisicion.update({
-      where: { id },
-      data: { ...dto, estado: 'APROBADA' },
-    });
+      const requisicion = await tx.requisicion.update({
+        where: { id },
+        data: { ...dto, estado: 'APROBADA' },
+      });
 
-    //actualizar el presupuesto del area
-    await this.prisma.presupuesto.update({
-      where: {
-        areaId_periodo: {
-          areaId: data.areaId,
-          periodo: data.periodo,
+      const diferencia = Number(requisicion.valorDefinido) - Number(requisicion.valorPresupuestado);
+
+      const presupuesto = await tx.presupuesto.update({
+        where: {
+          areaId_periodo: {
+            areaId: requisicion.areaId,
+            periodo: requisicion.periodo,
+          },
         },
-      },
-      data: {
-        saldoDisponible: { decrement: data.valorPresupuestado },
-        totalGastado: { increment: data.valorDefinido ?? 0 },
-        montoComprometido: { decrement: data.valorDefinido ?? 0 },
-      },
-    });
+        data: {
+          montoComprometido: {
+            increment: diferencia,
+          },
+          saldoDisponible: {
+            increment: diferencia,
+          },
+        },
+      });
 
-    //actualizar el presupuesto general
-    await this.prisma.presupuestoGeneral.update({
-      where: { periodo: data.periodo },
-      data: {
-        saldoDisponible: { decrement: data.valorPresupuestado },
-        presupuestoTotal: { increment: data.valorDefinido ?? 0 },
-        montoComprometido: { decrement: data.valorDefinido ?? 0 },
-      },
-    });
+      const presupuestoGeneral = await tx.presupuestoGeneral.update({
+        where: { periodo: requisicion.periodo },
+        data: {
+          montoComprometido: {
+            increment: diferencia,
+          },
+          saldoDisponible: {
+            increment: diferencia,
+          },
+        },
+      });
 
-    return {
-      data,
-      message: 'Requisicion aprobada con exito',
-    };
+      logger.debug(`Presupuesto: ${JSON.stringify(presupuesto)}`, 'RequisicionService');
+      logger.debug(
+        `Presupuesto general: ${JSON.stringify(presupuestoGeneral)}`,
+        'RequisicionService',
+      );
+
+      return {
+        data: requisicion,
+        message: 'Requisición aprobada correctamente',
+      };
+    });
   }
 
   async createComments(idRequisicion: number, dto: CreateCommentDto) {
@@ -411,6 +531,27 @@ export class RequisicionService {
     const data = await this.prisma.requisicion.update({
       where: { id: requisicionId },
       data: { ...dto, estado: 'RECHAZADA' },
+    });
+    await this.prisma.$transaction(async (tx) => {
+      await tx.presupuesto.update({
+        where: {
+          areaId_periodo: {
+            areaId: data.areaId,
+            periodo: data.periodo,
+          },
+        },
+        data: {
+          montoComprometido: { decrement: data.valorPresupuestado },
+          saldoDisponible: { increment: data.valorPresupuestado },
+        },
+      });
+      await tx.presupuestoGeneral.update({
+        where: { periodo: data.periodo },
+        data: {
+          montoComprometido: { decrement: data.valorPresupuestado },
+          saldoDisponible: { increment: data.valorPresupuestado },
+        },
+      });
     });
     return {
       data,
