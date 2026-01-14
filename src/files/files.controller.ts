@@ -9,7 +9,9 @@ import {
 import type { Response } from 'express';
 import { join } from 'path';
 import { existsSync } from 'fs';
+import { Public } from '@/common/decorators/public.decorator';
 
+@Public()
 @Controller('uploads')
 export class FilesController {
   private readonly allowedFolders = ['cotizaciones', 'facturas', 'pagos', 'imagenes', 'documentos'];
