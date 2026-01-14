@@ -60,6 +60,8 @@ export class SolicitudPresupuestoService {
         id: true,
         periodo: true,
         montoSolicitado: true,
+        montoAprobado: true,
+        porcentajeAprobacion: true,
         createdAt: true,
         estado: true,
         articulos: {
