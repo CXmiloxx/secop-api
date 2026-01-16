@@ -14,6 +14,7 @@ import { PresupuestoGeneralModule } from './presupuesto-general/presupuesto-gene
 import { AreasModule } from './areas/areas.module';
 import { RequisicionModule } from './requisicion/requisicion.module';
 import { FilesModule } from './files/files.module';
+import { PagosModule } from './pagos/pagos.module';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { FilesModule } from './files/files.module';
     AreasModule,
     RequisicionModule,
     FilesModule,
+    PagosModule,
   ],
   controllers: [],
   providers: [

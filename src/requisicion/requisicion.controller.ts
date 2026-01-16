@@ -37,11 +37,6 @@ export class RequisicionController {
     return await this.requisicionService.findAll(periodo);
   }
 
-  @Get('aprobadas')
-  async findAllByEstadoAprobado(@Query('periodo') periodo: number) {
-    return await this.requisicionService.findAllByEstadoAprobado(periodo);
-  }
-
   @Post('comentario/:requiscionId')
   async createComments(
     @Param('requiscionId') idRreqiscion: number,
