@@ -173,9 +173,9 @@ export class SolicitudPresupuestoService {
       for (const item of dto?.articulos ?? []) {
         await tx.articuloSolicitudPresupuesto.update({
           where: {
-            solicitudId_cuentaContableId: {
+            solicitudId_conceptoContableId: {
               solicitudId: id,
-              cuentaContableId: item.cuentaContableId,
+              conceptoContableId: item.conceptoContableId,
             },
           },
           data: {
