@@ -198,7 +198,7 @@ export class RequisicionService {
 
       return {
         area: req.area.nombre,
-        fecha: req.createdAt.toISOString(),
+        fechaSolicitud: req.createdAt.toISOString(),
         estado: req.estado,
         proveedor: req.proveedor?.nombre || 'Sin proveedor',
         cuenta: articulo?.producto.conceptoContable.cuentaContable.nombre || 'N/A',
@@ -269,11 +269,21 @@ export class RequisicionService {
 
     const data = requisiciones.map((req) => {
       const articulo = req.articulos[0];
+      const aprobadoPor =
+        req.estado === 'APROBADA'
+          ? [
+              req.rector ? 'rector' : null,
+              req.vicerrector ? 'vicerrector' : null,
+              req.sindico ? 'sindico' : null,
+            ]
+              .filter(Boolean)
+              .join(', ') || 'N/A'
+          : null;
 
       return {
         id: req.id,
         area: req.area.nombre,
-        fecha: req.createdAt.toISOString(),
+        fechaSolicitud: req.createdAt.toISOString(),
         estado: req.estado,
 
         solicitanteId: req.usuarioId,
@@ -294,6 +304,107 @@ export class RequisicionService {
         motivoRechazo: req.motivoRechazo,
         justificacion: req.justificacion,
         ivaPresupuestado: req.ivaPresupuestado || 0,
+        aprobadoPor: aprobadoPor,
+        daGarantia: req.daGarantia,
+        tiempoGarantia: req.tiempoGarantia,
+        soportesCotizaciones: req.cotizaciones.map((cotizacion) => ({
+          path: cotizacion.soporteCotizacionPath,
+        })),
+      };
+    });
+
+    return {
+      data,
+      message: 'Requisiciones obtenidas exitosamente',
+    };
+  }
+
+  async findAllByEstadoAprobado(periodo: number) {
+    const requisiciones = await this.prisma.requisicion.findMany({
+      where: { periodo, estado: 'APROBADA' },
+      include: {
+        area: {
+          select: { nombre: true },
+        },
+        cotizaciones: {
+          select: {
+            soporteCotizacionPath: true,
+          },
+        },
+        usuario: {
+          select: {
+            id: true,
+            nombre: true,
+            apellido: true,
+          },
+        },
+        proveedor: {
+          select: { nombre: true },
+        },
+        articulos: {
+          include: {
+            producto: {
+              select: {
+                nombre: true,
+                conceptoContable: {
+                  select: {
+                    nombre: true,
+                    cuentaContable: {
+                      select: { nombre: true },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (requisiciones.length === 0) {
+      throw new NotFoundException('No se encontraron requisiciones para el periodo: ' + periodo);
+    }
+
+    const data = requisiciones.map((req) => {
+      const articulo = req.articulos[0];
+      const aprobadoPor =
+        req.estado === 'APROBADA'
+          ? [
+              req.rector ? 'rector' : null,
+              req.vicerrector ? 'vicerrector' : null,
+              req.sindico ? 'sindico' : null,
+            ]
+              .filter(Boolean)
+              .join(', ') || 'N/A'
+          : null;
+
+      return {
+        id: req.id,
+        area: req.area.nombre,
+        fechaSolicitud: req.createdAt.toISOString(),
+        estado: req.estado,
+
+        solicitanteId: req.usuarioId,
+        solicitante: req.usuario ? `${req.usuario.nombre} ${req.usuario.apellido}` : 'N/A',
+
+        proveedor: req.proveedor?.nombre || 'Sin proveedor',
+
+        cuenta: articulo?.producto.conceptoContable.cuentaContable.nombre || 'N/A',
+        concepto: articulo?.producto.conceptoContable.nombre || 'N/A',
+        producto: articulo?.producto.nombre || 'N/A',
+
+        cantidad: articulo?.cantidad || 0,
+        valorUnitario: articulo?.valorUnitario || 0,
+        valorPresupuestado: req.valorPresupuestado,
+        valorDefinido: req.valorDefinido,
+
+        comentario: req.comentario,
+        motivoRechazo: req.motivoRechazo,
+        justificacion: req.justificacion,
+        ivaPresupuestado: req.ivaPresupuestado || 0,
+        ivaDefinido: req.ivaDefinido || 0,
+        aprobadoPor: aprobadoPor,
+        fechaAprobacion: req.updatedAt.toISOString(),
         soportesCotizaciones: req.cotizaciones.map((cotizacion) => ({
           path: cotizacion.soporteCotizacionPath,
         })),
@@ -448,9 +559,12 @@ export class RequisicionService {
         data: { ...dto, estado: 'APROBADA' },
       });
 
-      const diferencia = Number(requisicion.valorDefinido) - Number(requisicion.valorPresupuestado);
+      const totalOriginal = Number(requisicion.valorPresupuestado);
+      const totalAprobado = Number(requisicion.valorDefinido ?? requisicion.valorPresupuestado);
 
-      const presupuesto = await tx.presupuesto.update({
+      const diferencia = totalAprobado - totalOriginal;
+
+      await tx.presupuesto.update({
         where: {
           areaId_periodo: {
             areaId: requisicion.areaId,
@@ -462,28 +576,22 @@ export class RequisicionService {
             increment: diferencia,
           },
           saldoDisponible: {
-            increment: diferencia,
+            decrement: diferencia,
           },
         },
       });
 
-      const presupuestoGeneral = await tx.presupuestoGeneral.update({
+      await tx.presupuestoGeneral.update({
         where: { periodo: requisicion.periodo },
         data: {
           montoComprometido: {
             increment: diferencia,
           },
           saldoDisponible: {
-            increment: diferencia,
+            decrement: diferencia,
           },
         },
       });
-
-      logger.debug(`Presupuesto: ${JSON.stringify(presupuesto)}`, 'RequisicionService');
-      logger.debug(
-        `Presupuesto general: ${JSON.stringify(presupuestoGeneral)}`,
-        'RequisicionService',
-      );
 
       return {
         data: requisicion,
