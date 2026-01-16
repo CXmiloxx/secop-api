@@ -22,6 +22,11 @@ export class PresupuestoController {
     return await this.presupuestoService.findOne(+id);
   }
 
+  @Get('area/:id/detalles')
+  async findDetallesByArea(@Param('id') id: number, @Query('periodo') periodo: number) {
+    return await this.presupuestoService.findDetallesByArea(id, periodo);
+  }
+
   @Get('area/:areaId')
   async findByAreaId(@Param('areaId') areaId: number, @Query('periodo') periodo: number) {
     return await this.presupuestoService.findByAreaId(areaId, periodo);
