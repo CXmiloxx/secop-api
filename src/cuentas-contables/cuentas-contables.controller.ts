@@ -17,6 +17,11 @@ export class CuentasContablesController {
     return this.cuentasContablesService.findAll();
   }
 
+  @Get('conceptos-por-cuenta')
+  async conceptosByCuentasContables() {
+    return await this.cuentasContablesService.conceptosByCuentasContables();
+  }
+
   @Get('cuentas-permitidas')
   async cuentasPermitidasByArea(
     @Query('areaId') areaId: number,

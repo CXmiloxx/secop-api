@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateCuentasContableDto } from './dto/create-cuentas-contable.dto';
 import { UpdateCuentasContableDto } from './dto/update-cuentas-contable.dto';
 import { PrismaService } from '@prisma/prisma.service';
@@ -54,6 +54,23 @@ export class CuentasContablesService {
     return {
       data: Array.from(cuentasMap.values()),
       message: 'Cuentas contables permitidas',
+    };
+  }
+
+  async conceptosByCuentasContables() {
+    const data = await this.prisma.cuentaContable.findMany({
+      include: {
+        conceptos: true,
+      },
+    });
+
+    if (!data || data.length === 0) {
+      throw new NotFoundException('No se encontraron cuentas contables');
+    }
+
+    return {
+      data: data,
+      message: 'Cuentas contables obtenidas con exito',
     };
   }
 

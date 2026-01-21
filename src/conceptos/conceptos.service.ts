@@ -87,7 +87,16 @@ export class ConceptosService {
     };
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} concepto`;
+  async remove(id: number) {
+    const data = await this.prisma.conceptoContable.delete({
+      where: { id },
+    });
+    if (!data) {
+      throw new NotFoundException('No se encontró el concepto contable');
+    }
+    return {
+      data: null,
+      message: 'Concepto contable eliminado con exito',
+    };
   }
 }
