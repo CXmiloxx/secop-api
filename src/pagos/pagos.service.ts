@@ -145,13 +145,13 @@ export class PagosService {
         valorUnitario: articulo?.valorUnitario || 0,
         valorPresupuestado: req.valorPresupuestado,
         valorDefinido: req.valorDefinido,
-
         comentario: req.comentario,
         motivoRechazo: req.motivoRechazo,
         justificacion: req.justificacion,
         ivaPresupuestado: req.ivaPresupuestado || 0,
         ivaDefinido: req.ivaDefinido || 0,
         aprobadoPor: aprobadoPor,
+        numeroComite: req.numeroComite,
         fechaAprobacion: req.updatedAt.toISOString(),
         soportesCotizaciones: req.cotizaciones.map((cotizacion) => ({
           path: cotizacion.soporteCotizacionPath,
@@ -192,6 +192,32 @@ export class PagosService {
         estado: requisicion.estado,
       },
       message: 'Requisicion pasada a caja menor con exito',
+    };
+  }
+
+  async findAllSolicitudesCajaMenor(cajaMenorId: number) {
+    const solicitudes = await this.prisma.solicitudReposicionCajaMenor.findMany({
+      where: { cajaMenorId, estado: 'PENDIENTE' },
+    });
+    if (solicitudes.length === 0) {
+      throw new NotFoundException('No se encontraron solicitudes de caja menor pendientes');
+    }
+
+    const data = solicitudes.map((solicitud) => {
+      return {
+        id: solicitud.id,
+        estado: solicitud.estado,
+        montoSolicitado: solicitud.montoSolicitado,
+        justificacion: solicitud.justificacion,
+        fechaSolicitud: solicitud.createdAt.toISOString(),
+        fechaAprobacion: solicitud.fechaAprobacion?.toISOString(),
+        montoAprobado: solicitud.montoAprobado,
+        cajaMenorId: solicitud.cajaMenorId,
+      };
+    });
+    return {
+      data,
+      message: 'Solicitudes de caja menor obtenidas exitosamente',
     };
   }
 

@@ -42,9 +42,14 @@ export class PagosController {
   ) {
     return await this.pagosService.findAllByEstado(periodo, estado);
   }
-  @Post('pasar-a-caja-menor/:id')
+  @Patch('pasar-a-caja-menor/:id')
   pasarAPasaMenor(@Param('id') id: number) {
     return this.pagosService.pasarAPasaMenor(id);
+  }
+
+  @Get('solicitudes-caja-menor/:cajaMenorId')
+  findAllSolicitudesCajaMenor(@Param('cajaMenorId') cajaMenorId: number) {
+    return this.pagosService.findAllSolicitudesCajaMenor(cajaMenorId);
   }
 
   @Get(':id')
