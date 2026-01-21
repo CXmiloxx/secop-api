@@ -15,7 +15,7 @@ export class CreateProviderDto {
 
   @IsString()
   @IsNotEmpty()
-  tipo_insumo: string;
+  tipoInsumo: string;
 
   @IsString()
   @IsNotEmpty()

@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { CreateProviderDto } from './dto/create-provider.dto';
 import { UpdateProviderDto } from './dto/update-provider.dto';
 import { PrismaService } from '@prisma/prisma.service';
@@ -7,9 +7,25 @@ import { PrismaService } from '@prisma/prisma.service';
 export class ProviderService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(createProviderDto: CreateProviderDto) {
+  async create(dto: CreateProviderDto) {
+    const existingProvider = await this.prisma.proveedor.findUnique({
+      where: { nit: dto.nit },
+    });
+
+    if (existingProvider) {
+      throw new ConflictException('Proveedor con el nit ya existe');
+    }
+
+    const existingProviderByNombre = await this.prisma.proveedor.findUnique({
+      where: { nombre: dto.nombre },
+    });
+
+    if (existingProviderByNombre) {
+      throw new ConflictException('Proveedor con el nombre ' + dto.nombre + ' ya existe');
+    }
+
     const provider = await this.prisma.proveedor.create({
-      data: { ...createProviderDto },
+      data: dto,
     });
 
     return {
@@ -19,9 +35,13 @@ export class ProviderService {
   }
 
   async findAll() {
-    const all = await this.prisma.proveedor.findMany();
-    if (!all) {
-      throw new HttpException('Not Found', HttpStatus.NOT_FOUND);
+    const all = await this.prisma.proveedor.findMany({
+      orderBy: {
+        nombre: 'asc',
+      },
+    });
+    if (all.length === 0) {
+      throw new NotFoundException('No se encontraron proveedores');
     }
     return {
       data: all,
@@ -29,8 +49,19 @@ export class ProviderService {
     };
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} provider`;
+  async findOne(id: number) {
+    const provider = await this.prisma.proveedor.findUnique({
+      where: {
+        id,
+      },
+    });
+    if (!provider) {
+      throw new NotFoundException('No se encontró el proveedor');
+    }
+    return {
+      data: provider,
+      message: 'Proveedor obtenido con exito',
+    };
   }
 
   async update(id: number, updateProviderDto: UpdateProviderDto) {
@@ -49,7 +80,18 @@ export class ProviderService {
     };
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} provider`;
+  async remove(id: number) {
+    const provider = await this.prisma.proveedor.delete({
+      where: {
+        id,
+      },
+    });
+    if (!provider) {
+      throw new NotFoundException('No se encontró el proveedor');
+    }
+    return {
+      data: null,
+      message: 'Proveedor eliminado con exito',
+    };
   }
 }

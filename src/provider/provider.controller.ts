@@ -23,8 +23,8 @@ export class ProviderController {
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateProviderDto: UpdateProviderDto) {
-    return this.providerService.update(+id, updateProviderDto);
+  update(@Param('id') id: number, @Body() updateProviderDto: UpdateProviderDto) {
+    return this.providerService.update(id, updateProviderDto);
   }
 
   @Delete(':id')
