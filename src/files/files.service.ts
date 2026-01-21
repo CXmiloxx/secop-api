@@ -57,4 +57,3 @@ export class FilesService {
     return join(process.cwd(), this.uploadsDir, folder, filename);
   }
 }
-

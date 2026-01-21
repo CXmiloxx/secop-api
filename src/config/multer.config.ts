@@ -168,6 +168,15 @@ export const cotizacionMulterConfig = createMulterConfig(
   true, // Permitir crear carpeta si no existe
 );
 
+export const cajaMenorMulterConfig = createMulterConfig(
+  'caja-menor',
+  'soporte-caja-menor',
+  TipoArchivo.TODOS,
+  10,
+  1,
+  true,
+);
+
 export const facturaMulterConfig = createMulterConfig(
   'facturas',
   'factura',
