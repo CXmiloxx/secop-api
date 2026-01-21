@@ -164,6 +164,54 @@ export class CajaMenorService {
     };
   }
 
+  async historialCajaMenor(cajaMenorId: number) {
+    const data = await this.prisma.cajaMenorMovimiento.findMany({
+      where: { cajaMenorId },
+      include: {
+        proveedor: {
+          select: {
+            nombre: true,
+          },
+        },
+        cuentaContable: {
+          select: {
+            nombre: true,
+          },
+        },
+        conceptoContable: {
+          select: {
+            nombre: true,
+          },
+        },
+        area: {
+          select: {
+            nombre: true,
+          },
+        },
+      },
+    });
+
+    if (!data) {
+      throw new NotFoundException('No se encontró historial de movimientos de la caja menor ');
+    }
+
+    const formattedData = data.map((item) => ({
+      ...item,
+      proveedor: item.proveedor?.nombre ?? null,
+      cuentaContable: item.cuentaContable?.nombre ?? null,
+      conceptoContable: item.conceptoContable?.nombre ?? null,
+      area: item.area?.nombre ?? null,
+      fecha: item.createdAt.toISOString(),
+      areaSolicitante: item.area?.nombre ?? null,
+      descripcionProducto: item.descripcionProducto ?? null,
+    }));
+
+    return {
+      data: formattedData,
+      message: 'Historial de movimientos de la caja menor obtenido correctamente',
+    };
+  }
+
   async findOne(id: number) {
     return this.prisma.cajaMenor.findUnique({
       where: { id },

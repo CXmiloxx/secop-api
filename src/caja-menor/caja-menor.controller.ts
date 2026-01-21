@@ -49,6 +49,11 @@ export class CajaMenorController {
     return this.cajaMenorService.findAll(periodo);
   }
 
+  @Get('historial/:cajaMenorId')
+  async historial(@Param('cajaMenorId') cajaMenorId: number) {
+    return await this.cajaMenorService.historialCajaMenor(cajaMenorId);
+  }
+
   @Post('registrar-gasto')
   @UseInterceptors(FileInterceptor('soporteFactura', cajaMenorMulterConfig))
   registrarMovimiento(
