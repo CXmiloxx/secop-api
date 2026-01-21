@@ -151,14 +151,16 @@ export class CajaMenorService {
     });
 
     if (!data) {
-      throw new NotFoundException('No se encontró caja menor para el periodo ' + periodo);
+      throw new NotFoundException(
+        'No se encontró presupuesto de caja menor para el periodo ' + periodo,
+      );
     }
 
     const saldoDisponible = Number(data.presupuestoAsignado) - Number(data.presupuestoGastado);
 
     return {
       data: { ...data, saldoDisponible },
-      message: 'Caja menor obtenida correctamente',
+      message: 'Presupuesto de caja menor obtenido correctamente',
     };
   }
 
