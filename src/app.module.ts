@@ -15,6 +15,7 @@ import { AreasModule } from './areas/areas.module';
 import { RequisicionModule } from './requisicion/requisicion.module';
 import { FilesModule } from './files/files.module';
 import { PagosModule } from './pagos/pagos.module';
+import { CajaMenorModule } from './caja-menor/caja-menor.module';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { PagosModule } from './pagos/pagos.module';
     RequisicionModule,
     FilesModule,
     PagosModule,
+    CajaMenorModule,
   ],
   controllers: [],
   providers: [
