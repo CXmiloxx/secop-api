@@ -8,6 +8,7 @@ import { AuthController } from './auth.controller';
 @Module({
   imports: [
     PassportModule.register({ defaultStrategy: 'jwt' }),
+
     JwtModule.register({
       secret: appConfig.secretJwt,
       signOptions: {
@@ -18,6 +19,6 @@ import { AuthController } from './auth.controller';
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy],
-  exports: [AuthService, JwtStrategy, PassportModule, JwtModule],
+  exports: [AuthService, PassportModule],
 })
 export class AuthModule {}

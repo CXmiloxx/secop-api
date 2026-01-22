@@ -4,4 +4,5 @@ export interface JwtPayload {
   rolId: number;
   iat?: number;
   exp?: number;
+  type: 'access' | 'refresh';
 }

@@ -11,9 +11,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(private prisma: PrismaService) {
     super({
       jwtFromRequest: ExtractJwt.fromExtractors([
-        (request: Request) => {
-          return request?.cookies?.access_token;
-        },
+        (request: Request) => request?.cookies?.access_token,
         ExtractJwt.fromAuthHeaderAsBearerToken(),
       ]),
       ignoreExpiration: false,
@@ -22,15 +20,31 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: JwtPayload) {
+    // 1️⃣ Validar tipo de token
+    if (payload.type !== 'access') {
+      throw new UnauthorizedException('Token inválido');
+    }
+
     const usuario = await this.prisma.usuario.findUnique({
       where: { id: payload.sub },
-      include: { rol: true },
+      include: {
+        rol: { select: { id: true, nombre: true } },
+        area: { select: { id: true, nombre: true } },
+      },
     });
 
     if (!usuario) {
       throw new UnauthorizedException('Usuario no encontrado');
     }
 
-    return usuario;
+    if (usuario.estado === false) {
+      throw new UnauthorizedException('Usuario inactivo');
+    }
+
+    // 2️⃣ Nunca retornar contraseña
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { contrasena, ...userWithoutPassword } = usuario;
+
+    return userWithoutPassword;
   }
 }

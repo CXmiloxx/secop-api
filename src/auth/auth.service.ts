@@ -10,9 +10,9 @@ import { CreateAuthDto } from './dto/create-auth.dto';
 import { UpdateAuthDto } from './dto/update-auth.dto';
 import { LoginDto } from './dto/login.dto';
 import { PrismaService } from '@prisma/prisma.service';
-import { JwtPayload } from './interfaces/jwt-payload.interface';
 import { AuthResponse } from './interfaces/auth-response.interface';
 import { Response } from 'express';
+import { appConfig } from '@/config/app.config';
 
 type PrismaModel = keyof PrismaService;
 @Injectable()
@@ -128,23 +128,23 @@ export class AuthService {
       throw new UnauthorizedException('Credenciales inválidas');
     }
 
-    const token = this.generateToken(usuario.id, usuario.correo, usuario.rolId);
-    const refres_token = this.generateToken(usuario.id, usuario.correo, usuario.rolId);
+    const accessToken = this.generateAccessToken(usuario.id, usuario.correo, usuario.rolId);
 
-    // 👉 COOKIE
-    res.cookie('access_token', token, {
+    const refreshToken = this.generateRefreshToken(usuario.id);
+
+    res.cookie('access_token', accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
-      maxAge: 1000 * 60 * 60 * 24, // 1 día
+      maxAge: 1000 * 60 * 60, //1 hora
       path: '/',
     });
 
-    res.cookie('refresh_token', refres_token, {
+    res.cookie('refresh_token', refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
-      maxAge: 1000 * 60 * 60 * 24, // 1 día
+      maxAge: 1000 * 60 * 60 * 8, //8 horas
       path: '/',
     });
 
@@ -152,6 +152,74 @@ export class AuthService {
     const { contrasena, ...userWithoutPassword } = usuario;
 
     return { data: userWithoutPassword, message: 'Inicio de sesion Exitoso' };
+  }
+
+  async refreshToken(req: any, res: Response) {
+    const refreshToken = req.cookies?.refresh_token;
+    if (!refreshToken) {
+      throw new UnauthorizedException('No se encontró el token de refresco');
+    }
+
+    // 1 Verificar token con try/catch
+    let decoded: any;
+    try {
+      decoded = this.jwtService.verify(refreshToken);
+    } catch {
+      throw new UnauthorizedException('Token de refresco inválido o expirado');
+    }
+
+    // 2 Validar que sea realmente un refresh token
+    if (!decoded?.sub || decoded.type !== 'refresh') {
+      throw new UnauthorizedException('Token de refresco inválido');
+    }
+
+    // 3 Buscar usuario
+    const usuario = await this.prisma.usuario.findUnique({
+      where: { id: decoded.sub },
+      include: {
+        rol: { select: { id: true, nombre: true } },
+        area: { select: { id: true, nombre: true } },
+      },
+    });
+
+    if (!usuario) {
+      throw new UnauthorizedException('Usuario no encontrado');
+    }
+
+    if (usuario.estado === false) {
+      throw new UnauthorizedException('El usuario está inactivo');
+    }
+
+    // 4 Generar nuevos tokens
+    const accessToken = this.generateAccessToken(usuario.id, usuario.correo, usuario.rolId);
+
+    const newRefreshToken = this.generateRefreshToken(usuario.id);
+
+    // 5 Setear cookies con duraciones correctas
+    res.cookie('access_token', accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 1000 * 60 * 60, // 1 hora
+      path: '/',
+    });
+
+    res.cookie('refresh_token', newRefreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 1000 * 60 * 60 * 8, // 8 horas
+      path: '/',
+    });
+
+    //Retornar usuario sin contraseña
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { contrasena, ...userWithoutPassword } = usuario;
+
+    return {
+      data: null,
+      message: 'Token de refresco exitoso',
+    };
   }
 
   async allUsers() {
@@ -186,10 +254,6 @@ export class AuthService {
     },
   ) {
     return await (this.prisma[model] as any).findMany(options);
-
-    /*  return {
-      data,
-    }; */
   }
 
   async getProfile(userId: string) {
@@ -228,15 +292,27 @@ export class AuthService {
     return usuario;
   }
 
-  private generateToken(userId: string, correo: string, rolId: number): string {
-    const payload: JwtPayload = {
+  private generateAccessToken(userId: string, correo: string, rolId: number): string {
+    const payload = {
       sub: userId,
       correo,
       rolId,
+      type: 'access',
     };
 
     return this.jwtService.sign(payload, {
-      expiresIn: '1d',
+      expiresIn: appConfig.expiresInJwt,
+    });
+  }
+
+  private generateRefreshToken(userId: string): string {
+    const payload = {
+      sub: userId,
+      type: 'refresh',
+    };
+
+    return this.jwtService.sign(payload, {
+      expiresIn: appConfig.refreshExpiresInJwt,
     });
   }
 
