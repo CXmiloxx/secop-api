@@ -12,7 +12,6 @@ import {
 } from '@nestjs/common';
 import { PagosService } from './pagos.service';
 import { CreatePagoDto } from './dto/create-pago.dto';
-import { UpdatePagoDto } from './dto/update-pago.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { pagoMulterConfig } from '@/config/multer.config';
 import { EstadoRequisicion } from '@/generated/prisma/enums';
@@ -55,11 +54,6 @@ export class PagosController {
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.pagosService.findOne(+id);
-  }
-
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updatePagoDto: UpdatePagoDto) {
-    return this.pagosService.update(+id, updatePagoDto);
   }
 
   @Delete(':id')

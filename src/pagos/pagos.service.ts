@@ -1,6 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { CreatePagoDto } from './dto/create-pago.dto';
-import { UpdatePagoDto } from './dto/update-pago.dto';
 import { PrismaService } from '@prisma/prisma.service';
 import { EstadoRequisicion } from '@/generated/prisma/enums';
 
@@ -223,10 +222,6 @@ export class PagosService {
 
   findOne(id: number) {
     return `This action returns a #${id} pago`;
-  }
-
-  update(id: number, updatePagoDto: UpdatePagoDto) {
-    return `This action updates a #${id} pago`;
   }
 
   remove(id: number) {
