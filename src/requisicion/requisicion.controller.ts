@@ -28,13 +28,22 @@ export class RequisicionController {
   }
 
   @Get()
-  async findAllByArea(@Query('areaId') areaId: number, @Query('periodo') periodo: number) {
-    return await this.requisicionService.findAllByArea(areaId, periodo);
+  async findAllByArea(
+    @Query('areaId') areaId: number,
+    @Query('periodo') periodo: number,
+    @Query('partidaNoPresupuestada') partidaNoPresupuestada: boolean = false,
+  ) {
+    return await this.requisicionService.findAllByArea(areaId, periodo, partidaNoPresupuestada);
   }
 
   @Get('all')
   async findAll(@Query('periodo') periodo: number) {
     return await this.requisicionService.findAll(periodo);
+  }
+
+  @Get('pagadas')
+  async requisicionesPagadas(@Query('periodo') periodo: number) {
+    return await this.requisicionService.requisicionesPagadas(periodo);
   }
 
   @Post('comentario/:requiscionId')
@@ -43,11 +52,6 @@ export class RequisicionController {
     @Body() createCommentDto: CreateCommentDto,
   ) {
     return await this.requisicionService.createComments(+idRreqiscion, createCommentDto);
-  }
-
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.requisicionService.findOne(+id);
   }
 
   @Patch('aprobar/:id')

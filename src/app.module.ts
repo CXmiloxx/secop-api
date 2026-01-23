@@ -16,6 +16,7 @@ import { RequisicionModule } from './requisicion/requisicion.module';
 import { FilesModule } from './files/files.module';
 import { PagosModule } from './pagos/pagos.module';
 import { CajaMenorModule } from './caja-menor/caja-menor.module';
+import { PartidaNoPresupuestadaModule } from './partida-no-presupuestada/partida-no-presupuestada.module';
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { CajaMenorModule } from './caja-menor/caja-menor.module';
     FilesModule,
     PagosModule,
     CajaMenorModule,
+    PartidaNoPresupuestadaModule,
   ],
   controllers: [],
   providers: [
