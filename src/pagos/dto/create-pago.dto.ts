@@ -1,3 +1,4 @@
+import { TipoPago } from '@/generated/prisma/enums';
 import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
 export class CreatePagoDto {
@@ -15,7 +16,7 @@ export class CreatePagoDto {
 
   @IsString()
   @IsNotEmpty()
-  metodoPago: string;
+  tipoPago: TipoPago;
 
   @IsOptional()
   @IsString()

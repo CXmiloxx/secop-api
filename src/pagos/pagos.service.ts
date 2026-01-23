@@ -31,7 +31,7 @@ export class PagosService {
           requisicionId: Number(dto.requisicionId),
           usuarioRegistradorId: dto.usuarioRegistradorId,
           total: Number(dto.total),
-          metodoPago: dto.metodoPago,
+          tipoPago: dto.tipoPago,
           soporteFactura: soporteFactura?.path ?? null,
         },
       });
