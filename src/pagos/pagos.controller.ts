@@ -14,7 +14,7 @@ import { PagosService } from './pagos.service';
 import { CreatePagoDto } from './dto/create-pago.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { pagoMulterConfig } from '@/config/multer.config';
-import { EstadoRequisicion } from '@/generated/prisma/enums';
+import { EstadoRequisicion, TipoPago } from '@/generated/prisma/enums';
 
 @Controller('pagos')
 export class PagosController {
@@ -49,6 +49,11 @@ export class PagosController {
   @Get('solicitudes-caja-menor/:cajaMenorId')
   findAllSolicitudesCajaMenor(@Param('cajaMenorId') cajaMenorId: number) {
     return this.pagosService.findAllSolicitudesCajaMenor(cajaMenorId);
+  }
+
+  @Get('historial')
+  async findAllHistorial(@Query('periodo') periodo: number, @Query('tipoPago') tipoPago: TipoPago) {
+    return await this.pagosService.findAllHistorial(periodo, tipoPago);
   }
 
   @Get(':id')

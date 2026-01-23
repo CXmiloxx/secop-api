@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { CreatePagoDto } from './dto/create-pago.dto';
 import { PrismaService } from '@prisma/prisma.service';
-import { EstadoRequisicion } from '@/generated/prisma/enums';
+import { EstadoRequisicion, TipoPago } from '@/generated/prisma/enums';
 
 @Injectable()
 export class PagosService {
@@ -217,6 +217,66 @@ export class PagosService {
     return {
       data,
       message: 'Solicitudes de caja menor obtenidas exitosamente',
+    };
+  }
+
+  async findAllHistorial(periodo: number, tipoPago: TipoPago) {
+    let whereClause = {};
+    if (tipoPago === TipoPago.TESORERIA) {
+      whereClause = {
+        requisicion: {
+          periodo: periodo,
+        },
+      };
+    } else {
+      whereClause = {
+        tipoPago: tipoPago,
+        requisicion: {
+          periodo: periodo,
+        },
+      };
+    }
+    const historial = await this.prisma.pago.findMany({
+      where: whereClause,
+      include: {
+        requisicion: {
+          include: {
+            area: { select: { nombre: true } },
+          },
+        },
+        usuarioRegistrador: {
+          select: {
+            id: true,
+            nombre: true,
+            apellido: true,
+          },
+        },
+      },
+    });
+
+    if (historial.length === 0) {
+      throw new NotFoundException(
+        'No se encontraron pagos para el periodo: ' + periodo + ' y tipo de pago: ' + tipoPago,
+      );
+    }
+
+    const data = historial.map((pago) => {
+      return {
+        id: pago.id,
+        tipoPago: pago.tipoPago,
+        total: pago.total,
+        fecha: pago.createdAt.toISOString(),
+        areaSolicitante: pago.requisicion.area.nombre,
+        usuarioRegistrador: pago.usuarioRegistrador.nombre + ' ' + pago.usuarioRegistrador.apellido,
+        soporteFactura: pago.soporteFactura,
+        estadoRequisicion: pago.requisicion.estado,
+        estado: pago.requisicion.estado,
+      };
+    });
+
+    return {
+      data,
+      message: 'Historial de pagos obtenido exitosamente',
     };
   }
 
