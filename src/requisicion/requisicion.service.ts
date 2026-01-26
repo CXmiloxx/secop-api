@@ -7,9 +7,75 @@ import { RechazarRequisicionDto } from '@/requisicion/dto/rechazar-requizicion.d
 import { existsSync } from 'fs';
 import { unlink } from 'fs/promises';
 import { logger } from '@/common';
+import { Prisma, Requisicion } from '@/generated/prisma/client';
 @Injectable()
 export class RequisicionService {
   constructor(private readonly prisma: PrismaService) {}
+
+  private async aprobarNoPresupuestada(
+    tx: Prisma.TransactionClient,
+    requisicion: Requisicion,
+    dto: UpdateRequisicionDto,
+  ) {
+    const updated = await tx.requisicion.update({
+      where: { id: requisicion.id },
+      data: { ...dto, estado: 'APROBADA' },
+    });
+
+    return {
+      data: updated,
+      message: 'Partida no presupuestada aprobada correctamente',
+    };
+  }
+
+  private async aprobarPresupuestada(
+    tx: Prisma.TransactionClient,
+    requisicion: Requisicion,
+    dto: UpdateRequisicionDto,
+  ) {
+    const updated = await tx.requisicion.update({
+      where: { id: requisicion.id },
+      data: { ...dto, estado: 'APROBADA' },
+    });
+
+    const diferencia =
+      Number(updated.valorDefinido ?? updated.valorPresupuestado) -
+      Number(updated.valorPresupuestado);
+
+    const presupuesto = await tx.presupuesto.findUnique({
+      where: {
+        areaId_periodo: {
+          areaId: updated.areaId,
+          periodo: updated.periodo,
+        },
+      },
+    });
+
+    if (!presupuesto) {
+      throw new BadRequestException('No hay presupuesto para esta área');
+    }
+
+    await tx.presupuesto.update({
+      where: { id: presupuesto.id },
+      data: {
+        montoComprometido: { increment: diferencia },
+        saldoDisponible: { decrement: diferencia },
+      },
+    });
+
+    await tx.presupuestoGeneral.update({
+      where: { periodo: updated.periodo },
+      data: {
+        montoComprometido: { increment: diferencia },
+        saldoDisponible: { decrement: diferencia },
+      },
+    });
+
+    return {
+      data: updated,
+      message: 'Requisición aprobada correctamente',
+    };
+  }
 
   async create(dto: CreateRequisicionDto) {
     // Obtener el presupuesto aprobado para el producto/concepto en este periodo y área
@@ -545,59 +611,25 @@ export class RequisicionService {
 
   async aprobarRequisicion(id: number, dto: UpdateRequisicionDto) {
     return this.prisma.$transaction(async (tx) => {
-      const soportes = await this.prisma.soporteCotizacion.findMany({
+      const requisicion = await tx.requisicion.findUnique({ where: { id } });
+
+      if (!requisicion) {
+        throw new NotFoundException('Requisición no existe');
+      }
+
+      const soportes = await tx.soporteCotizacion.findMany({
         where: { requisicionId: id },
       });
 
       if (soportes.length < 1) {
-        throw new BadRequestException(
-          'La requisición debe tener al menos un soporte de cotización para ser aprobada',
-        );
+        throw new BadRequestException('Debe tener al menos un soporte de cotización');
       }
 
-      const requisicion = await tx.requisicion.update({
-        where: { id },
-        data: { ...dto, estado: 'APROBADA' },
-      });
+      if (requisicion.partidaNoPresupuestada) {
+        return this.aprobarNoPresupuestada(tx, requisicion, dto);
+      }
 
-      const totalOriginal = Number(requisicion.valorPresupuestado);
-      const totalAprobado = Number(requisicion.valorDefinido ?? requisicion.valorPresupuestado);
-
-      const diferencia = totalAprobado - totalOriginal;
-
-      await tx.presupuesto.update({
-        where: {
-          areaId_periodo: {
-            areaId: requisicion.areaId,
-            periodo: requisicion.periodo,
-          },
-        },
-        data: {
-          montoComprometido: {
-            increment: diferencia,
-          },
-          saldoDisponible: {
-            decrement: diferencia,
-          },
-        },
-      });
-
-      await tx.presupuestoGeneral.update({
-        where: { periodo: requisicion.periodo },
-        data: {
-          montoComprometido: {
-            increment: diferencia,
-          },
-          saldoDisponible: {
-            decrement: diferencia,
-          },
-        },
-      });
-
-      return {
-        data: requisicion,
-        message: 'Requisición aprobada correctamente',
-      };
+      return this.aprobarPresupuestada(tx, requisicion, dto);
     });
   }
 

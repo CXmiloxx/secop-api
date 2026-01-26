@@ -12,54 +12,85 @@ export class PagosService {
       where: { id: Number(dto.requisicionId) },
     });
     if (!requisicion) {
-      throw new NotFoundException('La requisicion no existe');
+      throw new NotFoundException('La requisición no existe');
     }
     if (requisicion.estado !== 'APROBADA' && requisicion.estado !== 'PASADA_A_CAJA_MENOR') {
-      throw new BadRequestException('La requisicion no esta aprobada o pasada a caja menor');
+      throw new BadRequestException(
+        'La requisición debe estar aprobada o pasada a caja menor para poder registrar un pago',
+      );
     }
 
     if (Number(requisicion.valorDefinido) < Number(dto.total)) {
       throw new BadRequestException(
-        'El valor del pago no puede ser mayor al valor presupuestado de la requisicion',
+        'El valor del pago no puede ser mayor al valor presupuestado de la requisición',
       );
     }
 
-    const pago = await this.prisma.$transaction(async (tx) => {
-      const nuevoPago = await tx.pago.create({
-        data: {
-          ...dto,
-          requisicionId: Number(dto.requisicionId),
-          usuarioRegistradorId: dto.usuarioRegistradorId,
-          total: Number(dto.total),
-          tipoPago: dto.tipoPago,
-          soporteFactura: soporteFactura?.path ?? null,
-        },
-      });
-      await tx.requisicion.update({
-        where: { id: Number(dto.requisicionId) },
-        data: { estado: 'PAGADO' },
+    // si es partida no presupuestada, se crea el pago y se actualiza el estado de la requisicion a pagado
+    if (requisicion.partidaNoPresupuestada) {
+      const pago = await this.prisma.$transaction(async (tx) => {
+        const nuevoPago = await tx.pago.create({
+          data: {
+            requisicionId: Number(dto.requisicionId),
+            usuarioRegistradorId: dto.usuarioRegistradorId,
+            total: Number(dto.total),
+            tipoPago: dto.tipoPago,
+            soporteFactura: soporteFactura?.path ?? null,
+          },
+        });
+
+        await tx.requisicion.update({
+          where: { id: Number(dto.requisicionId) },
+          data: { estado: 'PAGADO' },
+        });
+        return nuevoPago;
       });
 
-      await tx.presupuesto.update({
-        where: { areaId_periodo: { areaId: requisicion.areaId, periodo: requisicion.periodo } },
-        data: {
-          totalGastado: { increment: dto.total },
-          montoComprometido: { decrement: dto.total },
-        },
+      return {
+        data: pago,
+        message: 'Pago de partida no presupuestada creado con éxito',
+      };
+    } else {
+      // si es requisicion normal, se crea el pago y se actualiza el estado de la requisicion a pagado y se actualiza el presupuesto
+      const pago = await this.prisma.$transaction(async (tx) => {
+        const nuevoPago = await tx.pago.create({
+          data: {
+            requisicionId: Number(dto.requisicionId),
+            usuarioRegistradorId: dto.usuarioRegistradorId,
+            total: Number(dto.total),
+            tipoPago: dto.tipoPago,
+            soporteFactura: soporteFactura?.path ?? null,
+          },
+        });
+
+        await tx.requisicion.update({
+          where: { id: Number(dto.requisicionId) },
+          data: { estado: 'PAGADO' },
+        });
+
+        await tx.presupuesto.update({
+          where: { areaId_periodo: { areaId: requisicion.areaId, periodo: requisicion.periodo } },
+          data: {
+            totalGastado: { increment: Number(dto.total) },
+            montoComprometido: { decrement: Number(dto.total) },
+          },
+        });
+        await tx.presupuestoGeneral.update({
+          where: { periodo: requisicion.periodo },
+          data: {
+            totalEjecutado: { increment: Number(dto.total) },
+            montoComprometido: { decrement: Number(dto.total) },
+          },
+        });
+
+        return nuevoPago;
       });
-      await tx.presupuestoGeneral.update({
-        where: { periodo: requisicion.periodo },
-        data: {
-          totalEjecutado: { increment: dto.total },
-          montoComprometido: { decrement: dto.total },
-        },
-      });
-      return nuevoPago;
-    });
-    return {
-      data: pago,
-      message: 'Pago creado con exito',
-    };
+
+      return {
+        data: pago,
+        message: 'Pago creado exitosamente',
+      };
+    }
   }
 
   findAll() {
@@ -152,6 +183,7 @@ export class PagosService {
         aprobadoPor: aprobadoPor,
         numeroComite: req.numeroComite,
         fechaAprobacion: req.updatedAt.toISOString(),
+        partidaNoPresupuestada: req.partidaNoPresupuestada,
         soportesCotizaciones: req.cotizaciones.map((cotizacion) => ({
           path: cotizacion.soporteCotizacionPath,
         })),
@@ -271,6 +303,9 @@ export class PagosService {
         soporteFactura: pago.soporteFactura,
         estadoRequisicion: pago.requisicion.estado,
         estado: pago.requisicion.estado,
+        tipoRequisicion: pago.requisicion.partidaNoPresupuestada
+          ? 'PARTIDA NO PRESUPUESTADA'
+          : 'REQUISICION',
       };
     });
 
