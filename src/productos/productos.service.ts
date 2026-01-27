@@ -17,7 +17,7 @@ export class ProductosService {
     };
   }
 
-  async findAll(conceptoContableId: number) {
+  async findAllByConceptoContable(conceptoContableId: number) {
     if (!conceptoContableId || isNaN(Number(conceptoContableId))) {
       throw new BadRequestException('El concepto contable no es valido');
     }
@@ -33,6 +33,17 @@ export class ProductosService {
       );
     }
 
+    return {
+      data,
+      message: 'Productos obtenidos con éxito',
+    };
+  }
+
+  async findAll() {
+    const data = await this.prisma.producto.findMany();
+    if (!data || data.length === 0) {
+      throw new NotFoundException('No se encontraron productos');
+    }
     return {
       data,
       message: 'Productos obtenidos con éxito',

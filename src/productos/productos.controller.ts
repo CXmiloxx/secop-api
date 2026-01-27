@@ -13,8 +13,13 @@ export class ProductosController {
   }
 
   @Get(':conceptoContableId')
-  findAll(@Param('conceptoContableId') conceptoContableId: number) {
-    return this.productosService.findAll(conceptoContableId);
+  findAllByConceptoContable(@Param('conceptoContableId') conceptoContableId: number) {
+    return this.productosService.findAllByConceptoContable(conceptoContableId);
+  }
+
+  @Get()
+  findAll() {
+    return this.productosService.findAll();
   }
 
   @Get('productos-permitidos')
