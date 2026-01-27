@@ -17,6 +17,7 @@ import { FilesModule } from './files/files.module';
 import { PagosModule } from './pagos/pagos.module';
 import { CajaMenorModule } from './caja-menor/caja-menor.module';
 import { PartidaNoPresupuestadaModule } from './partida-no-presupuestada/partida-no-presupuestada.module';
+import { CalificacionModule } from './calificacion/calificacion.module';
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { PartidaNoPresupuestadaModule } from './partida-no-presupuestada/partida
     PagosModule,
     CajaMenorModule,
     PartidaNoPresupuestadaModule,
+    CalificacionModule,
   ],
   controllers: [],
   providers: [
