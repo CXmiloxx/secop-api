@@ -95,7 +95,7 @@ export class CalificacionService {
         proveedor: {
           select: { nombre: true, id: true },
         },
-        articulos: {
+        articulo: {
           include: {
             producto: {
               select: {
@@ -120,7 +120,7 @@ export class CalificacionService {
     }
 
     const data = requisiciones.map((req) => {
-      const articulo = req.articulos[0];
+      const articulo = req.articulo;
       const pago = req.pagos[0];
       const aprobadoPor =
         req.estado === 'APROBADA'
@@ -193,7 +193,7 @@ export class CalificacionService {
         proveedor: {
           select: { nombre: true, id: true },
         },
-        articulos: {
+        articulo: {
           include: {
             producto: {
               select: {
@@ -218,7 +218,7 @@ export class CalificacionService {
     }
 
     const data = requisiciones.map((req) => {
-      const articulo = req.articulos[0];
+      const articulo = req.articulo;
       const pago = req.pagos[0];
       const aprobadoPor =
         req.estado === 'APROBADA'

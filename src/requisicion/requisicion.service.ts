@@ -228,7 +228,7 @@ export class RequisicionService {
             nombre: true,
           },
         },
-        articulos: {
+        articulo: {
           include: {
             producto: {
               select: {
@@ -255,7 +255,7 @@ export class RequisicionService {
     }
 
     const data = requisiciones.map((req) => {
-      const articulo = req.articulos[0];
+      const articulo = req.articulo;
 
       const aprobadoPor =
         req.estado === 'APROBADA'
@@ -320,7 +320,7 @@ export class RequisicionService {
         proveedor: {
           select: { nombre: true },
         },
-        articulos: {
+        articulo: {
           include: {
             producto: {
               select: {
@@ -345,7 +345,7 @@ export class RequisicionService {
     }
 
     const data = requisiciones.map((req) => {
-      const articulo = req.articulos[0];
+      const articulo = req.articulo;
       const aprobadoPor =
         req.estado === 'APROBADA'
           ? [
@@ -415,7 +415,7 @@ export class RequisicionService {
         proveedor: {
           select: { nombre: true },
         },
-        articulos: {
+        articulo: {
           include: {
             producto: {
               select: {
@@ -440,7 +440,7 @@ export class RequisicionService {
     }
 
     const data = requisiciones.map((req) => {
-      const articulo = req.articulos[0];
+      const articulo = req.articulo;
       const aprobadoPor =
         req.estado === 'APROBADA'
           ? [
