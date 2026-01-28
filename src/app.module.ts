@@ -18,6 +18,7 @@ import { PagosModule } from './pagos/pagos.module';
 import { CajaMenorModule } from './caja-menor/caja-menor.module';
 import { PartidaNoPresupuestadaModule } from './partida-no-presupuestada/partida-no-presupuestada.module';
 import { CalificacionModule } from './calificacion/calificacion.module';
+import { InventarioModule } from './inventario/inventario.module';
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { CalificacionModule } from './calificacion/calificacion.module';
     CajaMenorModule,
     PartidaNoPresupuestadaModule,
     CalificacionModule,
+    InventarioModule,
   ],
   controllers: [],
   providers: [
