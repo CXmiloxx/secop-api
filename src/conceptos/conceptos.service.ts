@@ -17,7 +17,7 @@ export class ConceptosService {
     };
   }
 
-  async findAll(idCuentaContable: number) {
+  async findPorCuenta(idCuentaContable: number) {
     if (!idCuentaContable || isNaN(Number(idCuentaContable))) {
       throw new BadRequestException('La cuenta contable no es valida');
     }
@@ -27,6 +27,21 @@ export class ConceptosService {
         cuentaContableId: idCuentaContable,
       },
     });
+
+    if (!data || data.length === 0) {
+      throw new NotFoundException(
+        'No se encontraron conceptos contables para la cuenta especificada',
+      );
+    }
+
+    return {
+      data,
+      message: 'Conceptos contables obtenidos con éxito',
+    };
+  }
+
+  async findTotales() {
+    const data = await this.prisma.conceptoContable.findMany();
 
     if (!data || data.length === 0) {
       throw new NotFoundException(

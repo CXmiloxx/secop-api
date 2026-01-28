@@ -25,9 +25,14 @@ export class ConceptosController {
     );
   }
 
-  @Get(':idCuentaContable')
-  findAll(@Param('idCuentaContable') idCuentaContable: string) {
-    return this.conceptosService.findAll(+idCuentaContable);
+  @Get('por-cuenta/:cuentaContableId')
+  async findPorCuenta(@Param('cuentaContableId') cuentaContableId: number) {
+    return await this.conceptosService.findPorCuenta(cuentaContableId);
+  }
+
+  @Get('totales')
+  async findTotales() {
+    return await this.conceptosService.findTotales();
   }
 
   @Get(':id')
