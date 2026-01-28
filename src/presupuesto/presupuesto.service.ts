@@ -101,7 +101,11 @@ export class PresupuestoService {
       where: {
         areaId,
         periodo,
-        estado: 'PAGADO',
+        estado: {
+          not: {
+            in: ['PENDIENTE', 'RECHAZADA'],
+          },
+        },
       },
       include: {
         pagos: {
@@ -109,7 +113,7 @@ export class PresupuestoService {
             total: true,
           },
         },
-        articulos: {
+        articulo: {
           include: {
             producto: {
               include: {
@@ -135,33 +139,17 @@ export class PresupuestoService {
     const ejecutadoPorCuentaMap = new Map<number, number>();
 
     for (const requisicion of requisicionesPagadas) {
-      // Sumar todos los pagos de la requisición
+      if (!requisicion.articulo) continue;
+
       const totalPago = requisicion.pagos.reduce((sum, pago) => sum + Number(pago.total), 0);
 
-      if (totalPago === 0 || requisicion.articulos.length === 0) continue;
+      if (totalPago === 0) continue;
 
-      // Calcular el valor total de los artículos (sin IVA)
-      let valorTotalArticulos = 0;
-      const articulosPorCuenta = new Map<number, number>();
+      const cuentaContableId = requisicion.articulo.producto.conceptoContable.cuentaContable.id;
 
-      for (const articulo of requisicion.articulos) {
-        const cuentaContableId = articulo.producto.conceptoContable.cuentaContable.id;
-        const valorArticulo = Number(articulo.cantidad) * Number(articulo.valorUnitario);
-        valorTotalArticulos += valorArticulo;
+      const acumulado = ejecutadoPorCuentaMap.get(cuentaContableId) || 0;
 
-        const valorActual = articulosPorCuenta.get(cuentaContableId) || 0;
-        articulosPorCuenta.set(cuentaContableId, valorActual + valorArticulo);
-      }
-
-      // Distribuir el total del pago (con IVA) proporcionalmente por cuenta contable
-      if (valorTotalArticulos > 0) {
-        for (const [cuentaContableId, valorArticulos] of articulosPorCuenta.entries()) {
-          const proporcion = valorArticulos / valorTotalArticulos;
-          const valorEjecutado = totalPago * proporcion;
-          const valorActual = ejecutadoPorCuentaMap.get(cuentaContableId) || 0;
-          ejecutadoPorCuentaMap.set(cuentaContableId, valorActual + valorEjecutado);
-        }
-      }
+      ejecutadoPorCuentaMap.set(cuentaContableId, acumulado + totalPago);
     }
 
     // IDs de cuentas contables involucradas
