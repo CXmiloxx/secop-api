@@ -170,7 +170,13 @@ export class CalificacionService {
 
   async pendientesCalificarArea(periodo: number, areaId: number) {
     const requisiciones = await this.prisma.requisicion.findMany({
-      where: { periodo, estado: 'PENDIENTE_ENTREGA', areaId },
+      where: {
+        periodo,
+        estado: {
+          in: ['PENDIENTE_ENTREGA', 'EN_INVENTARIO'],
+        },
+        areaId,
+      },
       include: {
         pagos: {
           select: {
