@@ -1,4 +1,9 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { CreateConceptoDto } from './dto/create-concepto.dto';
 import { UpdateConceptoDto } from './dto/update-concepto.dto';
 import { PrismaService } from '@prisma/prisma.service';
@@ -7,10 +12,51 @@ import { PrismaService } from '@prisma/prisma.service';
 export class ConceptosService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(createConceptoDto: CreateConceptoDto) {
-    const data = await this.prisma.conceptoContable.create({
-      data: createConceptoDto,
+  async create(dto: CreateConceptoDto) {
+    const codigoExistente = await this.prisma.conceptoContable.findFirst({
+      where: {
+        codigo: dto.codigo,
+      },
     });
+
+    if (codigoExistente) {
+      throw new ConflictException(
+        'El código del concepto contable ya existe, por favor ingrese otro código',
+      );
+    }
+    const nombreExistente = await this.prisma.conceptoContable.findFirst({
+      where: {
+        nombre: dto.nombre,
+      },
+    });
+
+    if (nombreExistente) {
+      throw new ConflictException(
+        'El nombre del concepto contable ya existe, por favor ingrese otro nombre',
+      );
+    }
+
+    const data = await this.prisma.conceptoContable.create({
+      data: {
+        nombre: dto.nombre,
+        codigo: dto.codigo,
+        cuentaContableId: dto.cuentaContableId,
+      },
+    });
+
+    const productos = await this.prisma.producto.createMany({
+      data:
+        dto.productos?.map((producto) => ({
+          conceptoContableId: Number(data.id),
+          nombre: producto.nombre,
+          tipo: producto.tipo,
+        })) || [],
+    });
+
+    if (!productos) {
+      throw new NotFoundException('No se pudieron crear los productos');
+    }
+
     return {
       data,
       message: 'Concepto contable creado con exito',
@@ -37,6 +83,21 @@ export class ConceptosService {
     return {
       data,
       message: 'Conceptos contables obtenidos con éxito',
+    };
+  }
+
+  async conceptosArticulosByCuenta(cuentaContableId: number) {
+    const data = await this.prisma.conceptoContable.findMany({
+      where: {
+        cuentaContableId,
+      },
+      include: {
+        productos: true,
+      },
+    });
+    return {
+      data,
+      message: 'Conceptos contables y productos obtenidos con éxito',
     };
   }
 
@@ -94,7 +155,11 @@ export class ConceptosService {
   async update(id: number, updateConceptoDto: UpdateConceptoDto) {
     const data = await this.prisma.conceptoContable.update({
       where: { id },
-      data: updateConceptoDto,
+      data: {
+        nombre: updateConceptoDto.nombre,
+        codigo: updateConceptoDto.codigo,
+        cuentaContableId: updateConceptoDto.cuentaContableId,
+      },
     });
     return {
       data,

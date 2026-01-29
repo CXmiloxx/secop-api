@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { CreateCuentasContableDto } from './dto/create-cuentas-contable.dto';
 import { UpdateCuentasContableDto } from './dto/update-cuentas-contable.dto';
 import { PrismaService } from '@prisma/prisma.service';
@@ -8,9 +8,21 @@ export class CuentasContablesService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(createCuentasContableDto: CreateCuentasContableDto) {
+    const codigoExistente = await this.prisma.cuentaContable.findFirst({
+      where: {
+        codigo: createCuentasContableDto.codigo,
+      },
+    });
+
+    if (codigoExistente) {
+      throw new ConflictException(
+        'El código de la cuenta contable ya existe, por favor ingrese otro código',
+      );
+    }
     const data = await this.prisma.cuentaContable.create({
       data: createCuentasContableDto,
     });
+
     return {
       data,
       message: 'Cuenta contable creada con exito',
@@ -18,7 +30,29 @@ export class CuentasContablesService {
   }
 
   async findAll() {
-    return await this.prisma.cuentaContable.findMany();
+    const cuentas = await this.prisma.cuentaContable.findMany();
+
+    if (!cuentas || cuentas.length === 0) {
+      throw new NotFoundException('No se encontraron cuentas contables');
+    }
+
+    return {
+      data: cuentas,
+      message: 'Cuentas contables obtenidas con exito',
+    };
+  }
+
+  async findAllByTipoCuenta() {
+    const tiposCuenta = await this.prisma.tipoCuentaContable.findMany();
+
+    if (!tiposCuenta || tiposCuenta.length === 0) {
+      throw new NotFoundException('No se encontraron tipos de cuenta contable');
+    }
+
+    return {
+      data: tiposCuenta,
+      message: 'Tipos de cuenta contable obtenidos con exito',
+    };
   }
 
   async cuentasPermitidasByArea(areaId: number, periodo: number) {

@@ -12,6 +12,11 @@ export class ConceptosController {
     return this.conceptosService.create(createConceptoDto);
   }
 
+  @Get('articulos-por-cuenta/:cuentaContableId')
+  async conceptosArticulosByCuenta(@Param('cuentaContableId') cuentaContableId: number) {
+    return await this.conceptosService.conceptosArticulosByCuenta(cuentaContableId);
+  }
+
   @Get('permitidos')
   async conceptosPermitidosByCuenta(
     @Query('areaId') areaId: number,

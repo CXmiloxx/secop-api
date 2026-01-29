@@ -17,6 +17,11 @@ export class CuentasContablesController {
     return this.cuentasContablesService.findAll();
   }
 
+  @Get('tipos-cuenta')
+  findAllByTipoCuenta() {
+    return this.cuentasContablesService.findAllByTipoCuenta();
+  }
+
   @Get('conceptos-por-cuenta')
   async conceptosByCuentasContables() {
     return await this.cuentasContablesService.conceptosByCuentasContables();

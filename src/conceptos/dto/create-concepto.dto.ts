@@ -1,4 +1,5 @@
-import { IsInt, IsNotEmpty, IsString } from 'class-validator';
+import { CreateProductoDto } from '@/productos/dto/create-producto.dto';
+import { IsArray, IsInt, IsNotEmpty, IsString } from 'class-validator';
 
 export class CreateConceptoDto {
   @IsString()
@@ -12,4 +13,8 @@ export class CreateConceptoDto {
   @IsInt()
   @IsNotEmpty()
   cuentaContableId: number;
+
+  @IsArray()
+  @IsNotEmpty()
+  productos?: CreateProductoDto[];
 }
