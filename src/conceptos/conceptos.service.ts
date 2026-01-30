@@ -13,6 +13,7 @@ export class ConceptosService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(dto: CreateConceptoDto) {
+    //1. Verificar si el código del concepto contable ya existe
     const codigoExistente = await this.prisma.conceptoContable.findFirst({
       where: {
         codigo: dto.codigo,
@@ -24,6 +25,8 @@ export class ConceptosService {
         'El código del concepto contable ya existe, por favor ingrese otro código',
       );
     }
+
+    //2. Verificar si el nombre del concepto contable ya existe
     const nombreExistente = await this.prisma.conceptoContable.findFirst({
       where: {
         nombre: dto.nombre,
@@ -36,6 +39,7 @@ export class ConceptosService {
       );
     }
 
+    //3. Crear concepto contable
     const data = await this.prisma.conceptoContable.create({
       data: {
         nombre: dto.nombre,
@@ -44,6 +48,21 @@ export class ConceptosService {
       },
     });
 
+    //4. Validar que el nombre de los productos no existan
+    const nombreProductosExistentes = await this.prisma.producto.findMany({
+      where: {
+        nombre: {
+          in: dto.productos?.map((producto) => producto.nombre),
+        },
+      },
+    });
+    if (nombreProductosExistentes.length > 0) {
+      throw new ConflictException(
+        `Los nombres de los productos ${nombreProductosExistentes.map((producto) => producto.nombre).join(', ')} ya existen, por favor ingrese otros nombres`,
+      );
+    }
+
+    //5. Crear productos
     const productos = await this.prisma.producto.createMany({
       data:
         dto.productos?.map((producto) => ({

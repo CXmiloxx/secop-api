@@ -19,6 +19,19 @@ export class CuentasContablesService {
         'El código de la cuenta contable ya existe, por favor ingrese otro código',
       );
     }
+
+    const nombreExistente = await this.prisma.cuentaContable.findFirst({
+      where: {
+        nombre: createCuentasContableDto.nombre,
+      },
+    });
+
+    if (nombreExistente) {
+      throw new ConflictException(
+        'El nombre de la cuenta contable ya existe, por favor ingrese otro nombre',
+      );
+    }
+
     const data = await this.prisma.cuentaContable.create({
       data: createCuentasContableDto,
     });
