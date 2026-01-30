@@ -19,6 +19,7 @@ import { CajaMenorModule } from './caja-menor/caja-menor.module';
 import { PartidaNoPresupuestadaModule } from './partida-no-presupuestada/partida-no-presupuestada.module';
 import { CalificacionModule } from './calificacion/calificacion.module';
 import { InventarioModule } from './inventario/inventario.module';
+import { ComprasModule } from './compras/compras.module';
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { InventarioModule } from './inventario/inventario.module';
     PartidaNoPresupuestadaModule,
     CalificacionModule,
     InventarioModule,
+    ComprasModule,
   ],
   controllers: [],
   providers: [
