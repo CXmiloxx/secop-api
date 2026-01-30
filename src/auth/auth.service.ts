@@ -70,6 +70,17 @@ export class AuthService {
       }
     }
 
+    //verificar si ya existe un usuario en el area
+    const existingUserInArea = await this.prisma.usuario.findFirst({
+      where: { areaId: createAuthDto.areaId },
+    });
+
+    if (existingUserInArea && existingUserInArea.estado === true) {
+      throw new ConflictException(
+        'Ya existe un usuario en el área, para registrar un nuevo usuario en el área, debe de desactivar el usuario existente',
+      );
+    }
+
     // Hash de la contraseña
     const hashedPassword = await bcrypt.hash(createAuthDto.contrasena, 10);
 
@@ -348,7 +359,7 @@ export class AuthService {
     });
 
     if (!usuario) {
-      throw new NotFoundException(`Usuario con ID ${id} no encontrado`);
+      throw new NotFoundException('Usuario no encontrado');
     }
 
     return usuario;
@@ -361,7 +372,7 @@ export class AuthService {
     });
 
     if (!usuario) {
-      throw new NotFoundException(`Usuario con ID ${id} no encontrado`);
+      throw new NotFoundException('Usuario no encontrado');
     }
 
     // Verificar si el rol existe (si se está actualizando)
@@ -465,15 +476,15 @@ export class AuthService {
     });
 
     if (!usuario) {
-      throw new NotFoundException(`Usuario con ID ${id} no encontrado`);
+      throw new NotFoundException('Usuario no encontrado');
     }
 
-    // Eliminar usuario
-    await this.prisma.usuario.delete({ where: { id } });
+    // Desactivar usuario
+    await this.prisma.usuario.update({ where: { id }, data: { estado: false } });
 
     return {
       data: null,
-      message: 'Usuario eliminado correctamente',
+      message: 'Usuario desactivado correctamente',
     };
   }
 }

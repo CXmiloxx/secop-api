@@ -1,4 +1,12 @@
-import { IsString, IsEmail, IsEnum, IsInt, MinLength, IsNotEmpty } from 'class-validator';
+import {
+  IsString,
+  IsEmail,
+  IsEnum,
+  IsInt,
+  MinLength,
+  IsNotEmpty,
+  IsBoolean,
+} from 'class-validator';
 import { TipoDocumento } from '../../generated/prisma/client';
 
 export class CreateAuthDto {
@@ -35,4 +43,8 @@ export class CreateAuthDto {
 
   @IsInt()
   areaId: number;
+
+  @IsBoolean()
+  @IsNotEmpty()
+  estado: boolean;
 }
