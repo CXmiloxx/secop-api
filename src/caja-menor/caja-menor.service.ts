@@ -20,10 +20,10 @@ export class CajaMenorService {
 
     if (!caja) throw new NotFoundException('Caja menor no encontrada');
 
-    const futuroAsignado = Number(caja.presupuestoAsignado) + Number(dto.montoSolicitado);
+    const totalParaSolicitar = Number(caja.presupuestoAsignado) + Number(dto.montoSolicitado);
 
-    if (futuroAsignado > Number(caja.topeMaximo)) {
-      throw new BadRequestException('La solicitud supera el tope máximo');
+    if (totalParaSolicitar > Number(caja.topeMaximo)) {
+      throw new BadRequestException('El monto solicitado supera el tope máximo de la caja menor');
     }
 
     return this.prisma.solicitudReposicionCajaMenor.create({
@@ -50,10 +50,12 @@ export class CajaMenorService {
 
       const caja = solicitud.cajaMenor;
 
-      const nuevoAsignado = Number(caja.presupuestoAsignado) + Number(dto.montoAprobado);
+      const valorTotalParaAprobar = Number(dto.montoAprobado) + Number(caja.presupuestoAsignado);
 
-      if (nuevoAsignado > Number(caja.topeMaximo)) {
-        throw new BadRequestException('La reposición supera el tope máximo');
+      if (valorTotalParaAprobar > Number(caja.topeMaximo)) {
+        throw new BadRequestException(
+          'El monto total a aprobar supera el tope máximo de la caja menor',
+        );
       }
 
       await tx.solicitudReposicionCajaMenor.update({
@@ -77,6 +79,15 @@ export class CajaMenorService {
 
       return { message: 'Reposición aprobada correctamente' };
     });
+  }
+
+  async rechazarReposicionCajaMenor(solicitudId: number) {
+    await this.prisma.solicitudReposicionCajaMenor.update({
+      where: { id: solicitudId },
+      data: { estado: 'RECHAZADO' },
+    });
+
+    return { message: 'Reposición rechazada correctamente' };
   }
 
   async asignarPresupuestoDirecto(cajaMenorId: number, monto: number, justificacion?: string) {

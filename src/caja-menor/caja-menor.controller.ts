@@ -36,6 +36,11 @@ export class CajaMenorController {
     return this.cajaMenorService.aprobarReposicionCajaMenor(aprobarPresupuestoDto);
   }
 
+  @Patch('rechazar-presupuesto/:solicitudId')
+  rechazarPresupuesto(@Param('solicitudId') solicitudId: number) {
+    return this.cajaMenorService.rechazarReposicionCajaMenor(solicitudId);
+  }
+
   @Post('asignar-presupuesto/:id')
   asignarPresupuesto(
     @Param('id') id: number,
