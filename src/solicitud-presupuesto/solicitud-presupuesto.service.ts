@@ -8,19 +8,21 @@ export class SolicitudPresupuestoService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(createSolicitudPresupuestoDto: CreateSolicitudPresupuestoDto) {
-    const usuarioSolicitante = await this.prisma.usuario.findUnique({
-      where: { id: createSolicitudPresupuestoDto.usuarioSolicitanteId },
-      include: {
-        area: true,
+    const solicitudPendiente = await this.prisma.solicitudPresupuesto.findFirst({
+      where: {
+        areaId: createSolicitudPresupuestoDto.areaId,
+        periodo: createSolicitudPresupuestoDto.periodo,
       },
     });
 
-    //1. Verificar si el usuario solicita presupuesto para su propia área
-    if (usuarioSolicitante?.areaId !== createSolicitudPresupuestoDto.areaId) {
-      throw new BadRequestException('No puedes solicitar presupuesto para otra área');
+    //1. Verificar si el área tiene una solicitud de presupuesto para el periodo
+    if (solicitudPendiente) {
+      throw new BadRequestException(
+        'El área ya realizo una solicitud de presupuesto para este periodo',
+      );
     }
 
-    // 3. Crear solicitud + ítems (en transacción)
+    // 2. Crear solicitud + ítems (en transacción)
     const solicitud = await this.prisma.$transaction(async (tx) => {
       const nuevaSolicitud = await tx.solicitudPresupuesto.create({
         data: {
@@ -33,7 +35,7 @@ export class SolicitudPresupuestoService {
         },
       });
 
-      // Crear ítems
+      // 3. Crear ítems
       await tx.articuloSolicitudPresupuesto.createMany({
         data: createSolicitudPresupuestoDto.articulos.map((item) => ({
           solicitudId: nuevaSolicitud.id,
