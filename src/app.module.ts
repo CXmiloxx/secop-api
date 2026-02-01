@@ -20,6 +20,7 @@ import { PartidaNoPresupuestadaModule } from './partida-no-presupuestada/partida
 import { CalificacionModule } from './calificacion/calificacion.module';
 import { InventarioModule } from './inventario/inventario.module';
 import { ComprasModule } from './compras/compras.module';
+import { SalidaProductoModule } from './salida-producto/salida-producto.module';
 
 @Module({
   imports: [
@@ -41,6 +42,7 @@ import { ComprasModule } from './compras/compras.module';
     CalificacionModule,
     InventarioModule,
     ComprasModule,
+    SalidaProductoModule,
   ],
   controllers: [],
   providers: [

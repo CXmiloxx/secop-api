@@ -1,4 +1,4 @@
-import { IsDateString, IsInt, IsNotEmpty, IsNumber, IsString } from 'class-validator';
+import { IsInt, IsNotEmpty, IsNumber, IsString } from 'class-validator';
 
 export class CreateInventarioDto {
   @IsInt()
@@ -16,10 +16,6 @@ export class CreateInventarioDto {
   @IsString()
   @IsNotEmpty()
   consultorId: string;
-
-  @IsDateString()
-  @IsNotEmpty()
-  fechaIngreso: string;
 
   @IsInt()
   @IsNotEmpty()
