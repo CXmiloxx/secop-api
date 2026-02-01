@@ -17,17 +17,27 @@ export class SolicitudPresupuestoController {
     return this.solicitudPresupuestoService.findAll(periodo);
   }
 
+  @Get('area/:areaId')
+  findSolicitudByArea(@Param('areaId') areaId: number, @Query('periodo') periodo: number) {
+    return this.solicitudPresupuestoService.findSolicitudByArea(areaId, periodo);
+  }
+
+  @Patch('aprobar')
+  aprobarSolicitud(@Body() aprobarSolicitudDto: UpdateSolicitudPresupuestoDto) {
+    return this.solicitudPresupuestoService.aprobarSolicitud(aprobarSolicitudDto);
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.solicitudPresupuestoService.findOne(+id);
   }
 
   @Patch(':id')
-  update(
+  editSolicitud(
     @Param('id') id: number,
     @Body() updateSolicitudPresupuestoDto: UpdateSolicitudPresupuestoDto,
   ) {
-    return this.solicitudPresupuestoService.update(id, updateSolicitudPresupuestoDto);
+    return this.solicitudPresupuestoService.editSolicitud(id, updateSolicitudPresupuestoDto);
   }
 
   @Delete(':id')

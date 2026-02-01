@@ -1,6 +1,6 @@
 import { CreateSolicitudPresupuestoDto } from '@/solicitud-presupuesto/dto/create-solicitud-presupuesto.dto';
 import { UpdateSolicitudPresupuestoDto } from '@/solicitud-presupuesto/dto/update-solicitud-presupuesto.dto';
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '@prisma/prisma.service';
 
 @Injectable()
@@ -50,6 +50,109 @@ export class SolicitudPresupuestoService {
     return {
       data: solicitud,
       message: 'Solicitud de presupuesto creada con exito',
+    };
+  }
+
+  async editSolicitud(id: number, dto: UpdateSolicitudPresupuestoDto) {
+    const solicitud = await this.prisma.solicitudPresupuesto.findUnique({
+      where: { id },
+      include: { articulos: true },
+    });
+    if (!solicitud) throw new NotFoundException('Solicitud no encontrada');
+    if (solicitud.estado !== 'PENDIENTE') {
+      throw new BadRequestException('Solo se puede editar una solicitud en estado PENDIENTE');
+    }
+
+    // 1. Actualizar solicitud
+    return this.prisma.$transaction(async (tx) => {
+      await tx.solicitudPresupuesto.update({
+        where: { id },
+        data: {
+          justificacion: dto.justificacion,
+          montoSolicitado: dto.montoSolicitado,
+          updatedAt: new Date(),
+        },
+      });
+
+      // 2. Actualizar ítems
+      if (dto.articulos?.length) {
+        // 2.1. Eliminar ítems existentes
+        await tx.articuloSolicitudPresupuesto.deleteMany({
+          where: { solicitudId: id },
+        });
+        // 2.2. Crear nuevos ítems
+        await tx.articuloSolicitudPresupuesto.createMany({
+          data: dto.articulos.map((item) => ({
+            solicitudId: id,
+            conceptoContableId: item.conceptoContableId,
+            cuentaContableId: item.cuentaContableId,
+            valorEstimado: item.valorEstimado,
+          })),
+        });
+      }
+
+      // 3. Obtener solicitud actualizada
+      const actualizada = await tx.solicitudPresupuesto.findUnique({
+        where: { id },
+        include: { articulos: true },
+      });
+      return { data: actualizada, message: 'Solicitud de presupuesto actualizada con éxito' };
+    });
+  }
+
+  async findSolicitudByArea(areaId: number, periodo: number) {
+    const data = await this.prisma.solicitudPresupuesto.findFirst({
+      where: {
+        areaId,
+        periodo,
+      },
+      select: {
+        id: true,
+        periodo: true,
+        montoSolicitado: true,
+        montoAprobado: true,
+        porcentajeAprobacion: true,
+        justificacion: true,
+        createdAt: true,
+        estado: true,
+        articulos: {
+          select: {
+            conceptoContable: {
+              select: {
+                id: true,
+                nombre: true,
+              },
+            },
+            cuentaContable: {
+              select: {
+                id: true,
+                nombre: true,
+              },
+            },
+            valorEstimado: true,
+            valorAprobado: true,
+          },
+        },
+        usuarioSolicitante: {
+          select: {
+            id: true,
+            nombre: true,
+          },
+        },
+        area: {
+          select: {
+            id: true,
+            nombre: true,
+          },
+        },
+      },
+    });
+    if (!data) {
+      throw new NotFoundException('No se encontró solicitud de presupuesto para el área');
+    }
+    return {
+      data,
+      message: 'Solicitud de presupuesto obtenida con éxito',
     };
   }
 
@@ -108,10 +211,10 @@ export class SolicitudPresupuestoService {
     return `This action returns a #${id} solicitarPresupuesto`;
   }
 
-  async update(id: number, dto: UpdateSolicitudPresupuestoDto) {
+  async aprobarSolicitud(dto: UpdateSolicitudPresupuestoDto) {
     return this.prisma.$transaction(async (tx) => {
       const solicitud = await tx.solicitudPresupuesto.findUnique({
-        where: { id },
+        where: { id: dto.id },
       });
 
       if (!solicitud) {
@@ -124,7 +227,7 @@ export class SolicitudPresupuestoService {
 
       // 1. Aprobar solicitud
       await tx.solicitudPresupuesto.update({
-        where: { id },
+        where: { id: dto.id },
         data: {
           estado: 'APROBADO',
           montoAprobado: dto.montoAprobado,
@@ -176,7 +279,7 @@ export class SolicitudPresupuestoService {
         await tx.articuloSolicitudPresupuesto.update({
           where: {
             solicitudId_conceptoContableId: {
-              solicitudId: id,
+              solicitudId: dto.id,
               conceptoContableId: item.conceptoContableId,
             },
           },
