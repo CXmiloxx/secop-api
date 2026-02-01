@@ -49,6 +49,7 @@ export class SalidaProductoService {
         solicitadoPorId: createSalidaProductoDto.solicitadoPorId,
         cantidad: createSalidaProductoDto.cantidad,
         estado: 'PENDIENTE',
+        justificacion: createSalidaProductoDto.justificacion ?? null,
       },
     });
 
@@ -70,7 +71,6 @@ export class SalidaProductoService {
         where: { id: aprobarSalidaProductoDto.idSalida },
         data: {
           estado: 'APROBADA',
-          justificacion: aprobarSalidaProductoDto.justificacion,
           aprobadoPorId: aprobarSalidaProductoDto.aprobadorId,
           fechaAprobacion: new Date(),
         },
