@@ -8,8 +8,7 @@ export class InventarioService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(dto: CreateInventarioDto) {
-    const { requisicionId, areaId, cantidad, consultorId, fechaIngreso, productoId, ubicacion } =
-      dto;
+    const { requisicionId, areaId, cantidad, consultorId, productoId, ubicacion } = dto;
 
     const result = await this.prisma.$transaction(async (prisma) => {
       // Validar artículo de la requisición
@@ -33,7 +32,6 @@ export class InventarioService {
           requisicionId,
           tipo: 'INGRESO',
           cantidad: Number(cantidad),
-          fechaIngreso: new Date(fechaIngreso),
           usuarioId: consultorId,
           ubicacion,
         },
@@ -156,7 +154,7 @@ export class InventarioService {
       },
       select: {
         id: true,
-        fechaIngreso: true,
+        createdAt: true,
         cantidad: true,
         tipo: true,
         producto: { select: { nombre: true } },
@@ -164,8 +162,21 @@ export class InventarioService {
       },
     });
 
+    if (historialMovimientos.length === 0) {
+      throw new NotFoundException('No se encontraron movimientos en el inventario');
+    }
+
+    const data = historialMovimientos.map((movimiento) => ({
+      id: movimiento.id,
+      fechaIngreso: movimiento.createdAt.toISOString(),
+      cantidad: movimiento.cantidad,
+      tipo: movimiento.tipo,
+      producto: movimiento.producto.nombre,
+      area: movimiento.area.nombre,
+    }));
+
     return {
-      data: historialMovimientos,
+      data,
       message: 'Historial de movimientos obtenido correctamente',
     };
   }
