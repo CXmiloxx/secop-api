@@ -69,6 +69,7 @@ export class ConceptosService {
           conceptoContableId: Number(data.id),
           nombre: producto.nombre,
           tipo: producto.tipo,
+          estado: producto.tipo === 'ACTIVO' ? 'ACTIVO' : null,
         })) || [],
     });
 
