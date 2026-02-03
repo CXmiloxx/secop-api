@@ -42,6 +42,51 @@ export class SalidaProductoService {
   }
 
   async createSolicitudSalidaProducto(createSalidaProductoDto: CreateSalidaProductoDto) {
+    const solicitudPendienteExistente = await this.prisma.solicitudSalidaProducto.findFirst({
+      where: {
+        areaId: createSalidaProductoDto.areaId,
+        productoId: createSalidaProductoDto.productoId,
+        solicitadoPorId: createSalidaProductoDto.solicitadoPorId,
+        estado: 'PENDIENTE',
+      },
+    });
+
+    if (solicitudPendienteExistente) {
+      throw new BadRequestException(
+        'Ya tiene una solicitud pendiente de salida para este producto en esta área. Espere a que sea aprobada o rechazada.',
+      );
+    }
+
+    const inventario = await this.prisma.inventarioArea.findFirst({
+      where: {
+        areaId: createSalidaProductoDto.areaId,
+        productoId: createSalidaProductoDto.productoId,
+      },
+      select: { stockActual: true },
+    });
+
+    if (!inventario) {
+      throw new NotFoundException('No se encontró el producto en el inventario');
+    }
+
+    const solicitudesPendientes = await this.prisma.solicitudSalidaProducto.aggregate({
+      where: {
+        areaId: createSalidaProductoDto.areaId,
+        productoId: createSalidaProductoDto.productoId,
+        estado: 'PENDIENTE',
+      },
+      _sum: { cantidad: true },
+    });
+
+    const cantidadReservada = Number(solicitudesPendientes._sum.cantidad ?? 0);
+    const stockDisponible = Number(inventario.stockActual) - cantidadReservada;
+
+    if (stockDisponible < Number(createSalidaProductoDto.cantidad)) {
+      throw new BadRequestException(
+        'No hay suficiente stock disponible para la solicitud (se considera el stock reservado en solicitudes pendientes)',
+      );
+    }
+
     const solicitud = await this.prisma.solicitudSalidaProducto.create({
       data: {
         areaId: createSalidaProductoDto.areaId,
@@ -52,12 +97,6 @@ export class SalidaProductoService {
         justificacion: createSalidaProductoDto.justificacion ?? null,
       },
     });
-
-    if (!solicitud) {
-      throw new BadRequestException(
-        'No se pudo crear la solicitud de salida de producto, por favor intente nuevamente',
-      );
-    }
 
     return {
       data: solicitud,
