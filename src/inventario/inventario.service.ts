@@ -191,6 +191,7 @@ export class InventarioService {
           select: {
             nombre: true,
             tipo: true,
+            estado: true,
             conceptoContable: {
               select: { nombre: true },
             },
@@ -216,6 +217,7 @@ export class InventarioService {
           id: productoId,
           nombre: item.producto.nombre,
           tipo: item.producto.tipo,
+          estado: item.producto.estado,
           categoria: item.producto.conceptoContable.nombre,
           cantidad: 0,
           areas: new Set<string>(),
@@ -257,6 +259,7 @@ export class InventarioService {
           select: {
             nombre: true,
             tipo: true,
+            estado: true,
             conceptoContable: {
               select: { nombre: true },
             },
@@ -279,6 +282,7 @@ export class InventarioService {
           id: productoId,
           nombre: item.producto.nombre,
           tipo: item.producto.tipo,
+          estado: item.producto.estado,
           categoria: item.producto.conceptoContable.nombre,
           stockMinimo: Number(item.stockMinimo),
           cantidad: Number(item.stockActual),
