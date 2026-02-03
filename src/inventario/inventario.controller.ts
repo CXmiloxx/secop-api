@@ -1,7 +1,7 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Query, Patch } from '@nestjs/common';
 import { InventarioService } from './inventario.service';
 import { CreateInventarioDto } from './dto/create-inventario.dto';
-import { UpdateInventarioDto } from './dto/update-inventario.dto';
+import { ModificarStockMinimoDto } from './dto/modificar-stock.dto';
 
 @Controller('inventario')
 export class InventarioController {
@@ -32,13 +32,8 @@ export class InventarioController {
     return await this.inventarioService.inventarioArea(areaId);
   }
 
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateInventarioDto: UpdateInventarioDto) {
-    return this.inventarioService.update(+id, updateInventarioDto);
-  }
-
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.inventarioService.remove(+id);
+  @Patch('stock-minimo')
+  async modificarStockMinimo(@Body() modificarStockMinimoDto: ModificarStockMinimoDto) {
+    return await this.inventarioService.modificarStockMinimo(modificarStockMinimoDto);
   }
 }

@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateInventarioDto } from './dto/create-inventario.dto';
-import { UpdateInventarioDto } from './dto/update-inventario.dto';
 import { PrismaService } from '@prisma/prisma.service';
+import { ModificarStockMinimoDto } from './dto/modificar-stock.dto';
 
 @Injectable()
 export class InventarioService {
@@ -55,6 +55,7 @@ export class InventarioService {
             areaId,
             productoId,
             stockActual: Number(cantidad),
+            stockMinimo: 1,
           },
         });
       }
@@ -189,6 +190,7 @@ export class InventarioService {
         producto: {
           select: {
             nombre: true,
+            tipo: true,
             conceptoContable: {
               select: { nombre: true },
             },
@@ -213,6 +215,7 @@ export class InventarioService {
         productosMap.set(productoId, {
           id: productoId,
           nombre: item.producto.nombre,
+          tipo: item.producto.tipo,
           categoria: item.producto.conceptoContable.nombre,
           cantidad: 0,
           areas: new Set<string>(),
@@ -249,9 +252,11 @@ export class InventarioService {
         stockActual: true,
         stockMinimo: true,
         productoId: true,
+        areaId: true,
         producto: {
           select: {
             nombre: true,
+            tipo: true,
             conceptoContable: {
               select: { nombre: true },
             },
@@ -261,7 +266,7 @@ export class InventarioService {
     });
 
     if (inventarioAreas.length === 0) {
-      throw new NotFoundException('No se encontraron productos en el inventario');
+      throw new NotFoundException('No se encontraron productos en el inventario general');
     }
 
     const productosMap = new Map<number, any>();
@@ -273,9 +278,11 @@ export class InventarioService {
         productosMap.set(productoId, {
           id: productoId,
           nombre: item.producto.nombre,
+          tipo: item.producto.tipo,
           categoria: item.producto.conceptoContable.nombre,
           stockMinimo: Number(item.stockMinimo),
           cantidad: Number(item.stockActual),
+          areaId: item.areaId,
         });
       }
     }
@@ -290,15 +297,31 @@ export class InventarioService {
 
     return {
       data,
-      message: 'Inventario general obtenido correctamente',
+      message: 'Inventario del área obtenido correctamente',
     };
   }
 
-  update(id: number, dto: UpdateInventarioDto) {
-    return `This action updates a #${id} inventario ${JSON.stringify(dto)}`;
-  }
+  async modificarStockMinimo(dto: ModificarStockMinimoDto) {
+    const inventarioArea = await this.prisma.inventarioArea.findUnique({
+      where: { areaId_productoId: { areaId: dto.areaId, productoId: dto.productoId } },
+    });
 
-  remove(id: number) {
-    return `This action removes a #${id} inventario`;
+    if (!inventarioArea) {
+      throw new NotFoundException('No se encontró el producto en el inventario del área');
+    }
+
+    await this.prisma.inventarioArea.update({
+      where: { id: inventarioArea.id },
+      data: { stockMinimo: dto.stockMinimo },
+    });
+
+    return {
+      data: {
+        stockMinimo: dto.stockMinimo,
+        productoId: dto.productoId,
+        areaId: dto.areaId,
+      },
+      message: 'Stock mínimo modificado correctamente',
+    };
   }
 }
