@@ -21,6 +21,7 @@ import { CalificacionModule } from './calificacion/calificacion.module';
 import { InventarioModule } from './inventario/inventario.module';
 import { ComprasModule } from './compras/compras.module';
 import { SalidaProductoModule } from './salida-producto/salida-producto.module';
+import { ReportesModule } from './reportes/reportes.module';
 
 @Module({
   imports: [
@@ -43,6 +44,7 @@ import { SalidaProductoModule } from './salida-producto/salida-producto.module';
     InventarioModule,
     ComprasModule,
     SalidaProductoModule,
+    ReportesModule,
   ],
   controllers: [],
   providers: [
