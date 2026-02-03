@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { CreateSalidaProductoDto } from './dto/create-salida-producto.dto';
 import { PrismaService } from '@prisma/prisma.service';
 import { AprobarSalidaProductoDto } from './dto/aprobar-salida-producto.dto';
+import { RechazarSalidaProductoDto } from './dto/rechazar-salida-producto.dto';
 
 @Injectable()
 export class SalidaProductoService {
@@ -42,21 +43,6 @@ export class SalidaProductoService {
   }
 
   async createSolicitudSalidaProducto(createSalidaProductoDto: CreateSalidaProductoDto) {
-    const solicitudPendienteExistente = await this.prisma.solicitudSalidaProducto.findFirst({
-      where: {
-        areaId: createSalidaProductoDto.areaId,
-        productoId: createSalidaProductoDto.productoId,
-        solicitadoPorId: createSalidaProductoDto.solicitadoPorId,
-        estado: 'PENDIENTE',
-      },
-    });
-
-    if (solicitudPendienteExistente) {
-      throw new BadRequestException(
-        'Ya tiene una solicitud pendiente de salida para este producto en esta área. Espere a que sea aprobada o rechazada.',
-      );
-    }
-
     const inventario = await this.prisma.inventarioArea.findFirst({
       where: {
         areaId: createSalidaProductoDto.areaId,
@@ -67,24 +53,6 @@ export class SalidaProductoService {
 
     if (!inventario) {
       throw new NotFoundException('No se encontró el producto en el inventario');
-    }
-
-    const solicitudesPendientes = await this.prisma.solicitudSalidaProducto.aggregate({
-      where: {
-        areaId: createSalidaProductoDto.areaId,
-        productoId: createSalidaProductoDto.productoId,
-        estado: 'PENDIENTE',
-      },
-      _sum: { cantidad: true },
-    });
-
-    const cantidadReservada = Number(solicitudesPendientes._sum.cantidad ?? 0);
-    const stockDisponible = Number(inventario.stockActual) - cantidadReservada;
-
-    if (stockDisponible < Number(createSalidaProductoDto.cantidad)) {
-      throw new BadRequestException(
-        'No hay suficiente stock disponible para la solicitud (se considera el stock reservado en solicitudes pendientes)',
-      );
     }
 
     const solicitud = await this.prisma.solicitudSalidaProducto.create({
@@ -106,6 +74,36 @@ export class SalidaProductoService {
 
   async aprobarSolicitudSalidaProducto(aprobarSalidaProductoDto: AprobarSalidaProductoDto) {
     const solicitud = await this.prisma.$transaction(async (tx) => {
+      const solicitudPendiente = await tx.solicitudSalidaProducto.findUnique({
+        where: { id: aprobarSalidaProductoDto.idSalida },
+      });
+
+      if (!solicitudPendiente) {
+        throw new NotFoundException('No se encontró la solicitud de salida');
+      }
+      if (solicitudPendiente.estado !== 'PENDIENTE') {
+        throw new BadRequestException('La solicitud ya fue procesada (aprobada o rechazada)');
+      }
+
+      const inventario = await tx.inventarioArea.findUnique({
+        where: {
+          areaId_productoId: {
+            areaId: solicitudPendiente.areaId,
+            productoId: solicitudPendiente.productoId,
+          },
+        },
+        select: { stockActual: true },
+      });
+
+      if (!inventario) {
+        throw new NotFoundException('No se encontró el producto en el inventario');
+      }
+      if (Number(inventario.stockActual) < Number(solicitudPendiente.cantidad)) {
+        throw new BadRequestException(
+          'No hay stock suficiente para aprobar esta solicitud. La cantidad disponible ya no cubre lo solicitado.',
+        );
+      }
+
       const solicitudActualizada = await tx.solicitudSalidaProducto.update({
         where: { id: aprobarSalidaProductoDto.idSalida },
         data: {
@@ -121,6 +119,7 @@ export class SalidaProductoService {
           productoId: solicitudActualizada.productoId,
           cantidad: solicitudActualizada.cantidad,
           usuarioId: solicitudActualizada.solicitadoPorId,
+          solicitudSalidaProductoId: solicitudActualizada.id,
         },
       });
 
@@ -142,6 +141,49 @@ export class SalidaProductoService {
     return {
       data: solicitud,
       message: 'Solicitud de salida de producto aprobada con éxito',
+    };
+  }
+
+  async rechazarSolicitudSalidaProducto(rechazarSalidaProductoDto: RechazarSalidaProductoDto) {
+    const solicitud = await this.prisma.$transaction(async (tx) => {
+      const solicitudPendiente = await tx.solicitudSalidaProducto.findUnique({
+        where: { id: rechazarSalidaProductoDto.idSalida },
+      });
+
+      if (!solicitudPendiente) {
+        throw new NotFoundException('No se encontró la solicitud de salida');
+      }
+      if (solicitudPendiente.estado !== 'PENDIENTE') {
+        throw new BadRequestException('La solicitud ya fue procesada (aprobada o rechazada)');
+      }
+
+      const solicitudActualizada = await tx.solicitudSalidaProducto.update({
+        where: { id: rechazarSalidaProductoDto.idSalida },
+        data: {
+          estado: 'RECHAZADA',
+          motivoRechazo: rechazarSalidaProductoDto.motivoRechazo,
+          rechazadoPorId: rechazarSalidaProductoDto.rechazadorId,
+          fechaRechazo: new Date(),
+        },
+      });
+      const movimientoCreado = await tx.movimientoInventario.create({
+        data: {
+          tipo: 'SALIDA',
+          areaId: solicitudActualizada.areaId,
+          productoId: solicitudActualizada.productoId,
+          cantidad: solicitudActualizada.cantidad,
+          usuarioId: solicitudActualizada.solicitadoPorId,
+          solicitudSalidaProductoId: solicitudActualizada.id,
+        },
+      });
+      return { solicitudActualizada, movimientoCreado };
+    });
+    return {
+      data: {
+        solicitud: solicitud.solicitudActualizada,
+        movimiento: solicitud.movimientoCreado,
+      },
+      message: 'Solicitud de salida de producto rechazada con éxito',
     };
   }
 
