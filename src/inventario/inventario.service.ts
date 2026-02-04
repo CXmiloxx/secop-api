@@ -2,10 +2,45 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateInventarioDto } from './dto/create-inventario.dto';
 import { PrismaService } from '@prisma/prisma.service';
 import { ModificarStockMinimoDto } from './dto/modificar-stock.dto';
+import { EstadoActivo } from '@/generated/prisma/enums';
+import { logger } from '@/common';
 
 @Injectable()
 export class InventarioService {
   constructor(private readonly prisma: PrismaService) {}
+
+  private buildInventarioWhere(
+    areaId?: number,
+    nombreProducto?: string,
+    estadoActivo?: EstadoActivo,
+    conceptoId?: number,
+  ) {
+    const where: any = {};
+
+    if (areaId !== undefined) {
+      where.areaId = Number(areaId);
+    }
+
+    if (nombreProducto || estadoActivo || conceptoId) {
+      where.producto = {};
+
+      if (nombreProducto) {
+        where.producto.nombre = {
+          contains: nombreProducto,
+        };
+      }
+
+      if (estadoActivo) {
+        where.producto.estado = estadoActivo;
+      }
+
+      if (conceptoId) {
+        where.producto.conceptoContableId = Number(conceptoId);
+      }
+    }
+
+    return where;
+  }
 
   async create(dto: CreateInventarioDto) {
     const { requisicionId, areaId, cantidad, consultorId, productoId, ubicacion } = dto;
@@ -182,8 +217,16 @@ export class InventarioService {
     };
   }
 
-  async inventarioGeneral() {
+  async inventarioGeneral(
+    areaId?: number,
+    nombreProducto?: string,
+    conceptoId?: number,
+    estadoActivo?: EstadoActivo,
+  ) {
+    const where = this.buildInventarioWhere(areaId, nombreProducto, estadoActivo, conceptoId);
+
     const inventarioAreas = await this.prisma.inventarioArea.findMany({
+      where,
       select: {
         stockActual: true,
         productoId: true,
@@ -204,8 +247,12 @@ export class InventarioService {
     });
 
     if (inventarioAreas.length === 0) {
-      throw new NotFoundException('No se encontraron productos en el inventario');
+      throw new NotFoundException(
+        'No se encontraron productos en el inventario con los filtros proporcionados',
+      );
     }
+
+    logger.debug(JSON.stringify(inventarioAreas), 'InventarioService');
 
     const productosMap = new Map<number, any>();
 
@@ -220,36 +267,44 @@ export class InventarioService {
           estado: item.producto.estado,
           categoria: item.producto.conceptoContable.nombre,
           cantidad: 0,
-          areas: new Set<string>(),
+          areas: areaId ? undefined : new Set<string>(),
+          area: areaId ? item.area.nombre : undefined,
         });
       }
 
       const producto = productosMap.get(productoId);
 
       producto.cantidad += Number(item.stockActual);
-      producto.areas.add(item.area.nombre);
+      if (!areaId) {
+        producto.areas?.add(item.area.nombre);
+      }
     }
 
     const productos = Array.from(productosMap.values()).map((p) => ({
       ...p,
-      areas: Array.from(p.areas),
+      areas: p.areas ? Array.from(p.areas) : undefined,
     }));
 
-    const data = {
-      totalProductos: productos.length,
-      totalUnidades: productos.reduce((sum, p) => sum + p.cantidad, 0),
-      productos,
-    };
-
     return {
-      data,
+      data: {
+        totalProductos: productos.length,
+        totalUnidades: productos.reduce((sum, p) => sum + p.cantidad, 0),
+        productos,
+      },
       message: 'Inventario general obtenido correctamente',
     };
   }
 
-  async inventarioArea(areaId: number) {
+  async inventarioArea(
+    areaId: number,
+    nombreProducto?: string,
+    conceptoId?: number,
+    estadoActivo?: EstadoActivo,
+  ) {
+    const where = this.buildInventarioWhere(areaId, nombreProducto, estadoActivo, conceptoId);
+
     const inventarioAreas = await this.prisma.inventarioArea.findMany({
-      where: { areaId },
+      where,
       select: {
         stockActual: true,
         stockMinimo: true,
@@ -264,6 +319,9 @@ export class InventarioService {
               select: { nombre: true },
             },
           },
+        },
+        area: {
+          select: { nombre: true },
         },
       },
     });
@@ -287,6 +345,7 @@ export class InventarioService {
           stockMinimo: Number(item.stockMinimo),
           cantidad: Number(item.stockActual),
           areaId: item.areaId,
+          area: item.area.nombre,
         });
       }
     }

@@ -2,6 +2,7 @@ import { Controller, Get, Post, Body, Param, Query, Patch } from '@nestjs/common
 import { InventarioService } from './inventario.service';
 import { CreateInventarioDto } from './dto/create-inventario.dto';
 import { ModificarStockMinimoDto } from './dto/modificar-stock.dto';
+import { EstadoActivo } from '@/generated/prisma/enums';
 
 @Controller('inventario')
 export class InventarioController {
@@ -23,13 +24,33 @@ export class InventarioController {
   }
 
   @Get('general')
-  async inventarioGeneral() {
-    return await this.inventarioService.inventarioGeneral();
+  async inventarioGeneral(
+    @Query('areaId') areaId?: number,
+    @Query('nombreProducto') nombreProducto?: string,
+    @Query('conceptoId') conceptoId?: number,
+    @Query('estadoActivo') estadoActivo?: EstadoActivo,
+  ) {
+    return await this.inventarioService.inventarioGeneral(
+      areaId,
+      nombreProducto,
+      conceptoId,
+      estadoActivo,
+    );
   }
 
   @Get('area/:areaId')
-  async inventarioArea(@Param('areaId') areaId: number) {
-    return await this.inventarioService.inventarioArea(areaId);
+  async inventarioArea(
+    @Param('areaId') areaId: number,
+    @Query('nombreProducto') nombreProducto?: string,
+    @Query('conceptoId') conceptoId?: number,
+    @Query('estadoActivo') estadoActivo?: EstadoActivo,
+  ) {
+    return await this.inventarioService.inventarioArea(
+      areaId,
+      nombreProducto,
+      conceptoId,
+      estadoActivo,
+    );
   }
 
   @Patch('stock-minimo')
