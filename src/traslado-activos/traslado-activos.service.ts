@@ -78,21 +78,13 @@ export class TrasladoActivosService {
       throw new NotFoundException('No se encontró el producto en el area');
     }
 
-    // Obtener la última ubicación, o un string vacío si no hay movimientos.
-    let ubicacion = '';
-    const movimientos = producto.producto.movimientosInventario;
-    if (movimientos && movimientos.length > 0) {
-      // Puedes cambiar aquí según la lógica deseada, por ejemplo, usar el último movimiento:
-      ubicacion = movimientos[movimientos.length - 1].ubicacion || '';
-    }
-
     const data = {
       id: producto.id,
       producto: producto.producto.nombre,
       cantidad: producto.stockActual,
       conceptoContable: producto.producto.conceptoContable.nombre,
       areaActual: producto.area.nombre,
-      ubicacion: ubicacion,
+      ubicacion: producto.ubicacion,
     };
 
     return {

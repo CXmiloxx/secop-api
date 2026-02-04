@@ -1,8 +1,8 @@
 import { Controller, Get, Post, Body, Param, Query, Patch } from '@nestjs/common';
 import { InventarioService } from './inventario.service';
 import { CreateInventarioDto } from './dto/create-inventario.dto';
-import { ModificarStockMinimoDto } from './dto/modificar-stock.dto';
 import { EstadoActivo } from '@/generated/prisma/enums';
+import { ModificarDetalleProductoDto } from './dto/modificar-producto.dto';
 
 @Controller('inventario')
 export class InventarioController {
@@ -53,8 +53,8 @@ export class InventarioController {
     );
   }
 
-  @Patch('stock-minimo')
-  async modificarStockMinimo(@Body() modificarStockMinimoDto: ModificarStockMinimoDto) {
-    return await this.inventarioService.modificarStockMinimo(modificarStockMinimoDto);
+  @Patch('producto')
+  async modificarDetalleProducto(@Body() modificarDetalleProductoDto: ModificarDetalleProductoDto) {
+    return await this.inventarioService.modificarDetalleProducto(modificarDetalleProductoDto);
   }
 }

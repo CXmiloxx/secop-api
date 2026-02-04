@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateInventarioDto } from './dto/create-inventario.dto';
 import { PrismaService } from '@prisma/prisma.service';
-import { ModificarStockMinimoDto } from './dto/modificar-stock.dto';
+import { ModificarDetalleProductoDto } from './dto/modificar-producto.dto';
 import { EstadoActivo } from '@/generated/prisma/enums';
 import { logger } from '@/common';
 
@@ -68,7 +68,6 @@ export class InventarioService {
           tipo: 'INGRESO',
           cantidad: Number(cantidad),
           usuarioId: consultorId,
-          ubicacion,
         },
       });
 
@@ -91,6 +90,7 @@ export class InventarioService {
             productoId,
             stockActual: Number(cantidad),
             stockMinimo: 1,
+            ubicacion,
           },
         });
       }
@@ -230,6 +230,7 @@ export class InventarioService {
       select: {
         stockActual: true,
         productoId: true,
+        ubicacion: true,
         producto: {
           select: {
             nombre: true,
@@ -269,6 +270,7 @@ export class InventarioService {
           cantidad: 0,
           areas: areaId ? undefined : new Set<string>(),
           area: areaId ? item.area.nombre : undefined,
+          ubicacion: item.ubicacion,
         });
       }
 
@@ -308,6 +310,7 @@ export class InventarioService {
       select: {
         stockActual: true,
         stockMinimo: true,
+        ubicacion: true,
         productoId: true,
         areaId: true,
         producto: {
@@ -346,6 +349,7 @@ export class InventarioService {
           cantidad: Number(item.stockActual),
           areaId: item.areaId,
           area: item.area.nombre,
+          ubicacion: item.ubicacion,
         });
       }
     }
@@ -364,7 +368,7 @@ export class InventarioService {
     };
   }
 
-  async modificarStockMinimo(dto: ModificarStockMinimoDto) {
+  async modificarDetalleProducto(dto: ModificarDetalleProductoDto) {
     const inventarioArea = await this.prisma.inventarioArea.findUnique({
       where: { areaId_productoId: { areaId: dto.areaId, productoId: dto.productoId } },
     });
@@ -375,16 +379,15 @@ export class InventarioService {
 
     await this.prisma.inventarioArea.update({
       where: { id: inventarioArea.id },
-      data: { stockMinimo: dto.stockMinimo },
+      data: { stockMinimo: Number(dto.stockMinimo), ubicacion: dto.ubicacion },
     });
 
     return {
       data: {
         stockMinimo: dto.stockMinimo,
-        productoId: dto.productoId,
-        areaId: dto.areaId,
+        ubicacion: dto.ubicacion,
       },
-      message: 'Stock mínimo modificado correctamente',
+      message: 'Detalle del producto modificado correctamente',
     };
   }
 }
