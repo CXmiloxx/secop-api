@@ -22,6 +22,7 @@ import { InventarioModule } from './inventario/inventario.module';
 import { ComprasModule } from './compras/compras.module';
 import { SalidaProductoModule } from './salida-producto/salida-producto.module';
 import { ReportesModule } from './reportes/reportes.module';
+import { TrasladoActivosModule } from './traslado-activos/traslado-activos.module';
 
 @Module({
   imports: [
@@ -45,6 +46,7 @@ import { ReportesModule } from './reportes/reportes.module';
     ComprasModule,
     SalidaProductoModule,
     ReportesModule,
+    TrasladoActivosModule,
   ],
   controllers: [],
   providers: [
