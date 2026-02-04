@@ -21,13 +21,20 @@ enum EstadoPresupuesto {
   APROBADO
 }
 
+enum EstadoReposicionCajaMenor {
+  PENDIENTE
+  APROBADO
+  RECHAZADO
+}
+
 enum EstadoRequisicion {
-  ENVIADA
-  LISTA_PARA_APROBACION
+  PENDIENTE
   APROBADA
   RECHAZADA
-  COMPROMETIDA
-  PAGADA
+  PAGADO
+  PASADA_A_CAJA_MENOR
+  PENDIENTE_ENTREGA
+  EN_INVENTARIO
   ENTREGADA
 }
 
@@ -35,7 +42,37 @@ enum EstadoTraslado {
   PENDIENTE
   APROBADO
   RECHAZADO
-  COMPLETADO
+}
+
+enum TipoMovimientoCajaMenor {
+  ASIGNACION_PRESUPUESTO
+  GASTO
+  REPOSICION_APROBADA
+  AJUSTE
+}
+
+enum TipoProducto {
+  GASTO
+  ACTIVO
+
+}
+
+enum TipoPago {
+  TESORERIA
+  CAJA_MENOR
+}
+
+enum EstadoSolicitudSalidaProducto {
+  PENDIENTE
+  APROBADA
+  RECHAZADA
+}
+
+enum EstadoActivo {
+  ACTIVO
+  EN_REPARACION
+  EN_MANTENIMIENTO
+  DADO_DE_BAJA
 }
 
 // ===== MODELOS PRINCIPALES =====
@@ -56,15 +93,24 @@ model Usuario {
   rol  Rol  @relation(fields: [rolId], references: [id], onDelete: Cascade)
   area Area @relation(fields: [areaId], references: [id], onDelete: Cascade)
 
+  trasladosActivos                     TrasladoActivos[]         @relation("TrasladoSolicitadoPor")
+  trasladosAprobados                   TrasladoActivos[]         @relation("TrasladoAprobadoPor")
+  movimientosInventario                MovimientoInventario[]
   // Auditoría inversa
-  auditoriasCreatedBy   Auditoria[]            @relation("AuditoriaCreatedBy")
-  auditoriasUpdatedBy   Auditoria[]            @relation("AuditoriaUpdatedBy")
+  auditoriasCreatedBy                  Auditoria[]               @relation("AuditoriaCreatedBy")
+  auditoriasUpdatedBy                  Auditoria[]               @relation("AuditoriaUpdatedBy")
   // Relaciones
-  requisicionesCreadas  Requisicion[]
-  pagosRegistrados      Pago[]
-  movimientosCajaMenor  CajaMenorMovimiento[]
-  solicitudPresupuestos SolicitudPresupuesto[]
-  solicitudesAprobadas  SolicitudPresupuesto[] @relation("AprobadorPresupuesto")
+  requisicionesCreadas                 Requisicion[]
+  pagosRegistrados                     Pago[]
+  solicitudPresupuestos                SolicitudPresupuesto[]
+  solicitudesAprobadas                 SolicitudPresupuesto[]    @relation("AprobadorPresupuesto")
+  calificacionesProveedor              CalificacionProveedor[]   @relation("EvalProveedor")
+  calificacionesTesoreria              CalificacionTesoreria[]
+  calificacionesComoConsultor          CalificacionConsultor[]   @relation("Consultor")
+  solicitudSalidaProductos             solicitudSalidaProducto[] @relation("SolicitadoPor")
+  solicitudSalidaProductosAprobadoPor  solicitudSalidaProducto[] @relation("AprobadoPor")
+  solicitudSalidaProductosRechazadoPor solicitudSalidaProducto[] @relation("RechazadoPor")
+  trasladosRechazados                 TrasladoActivos[]         @relation("TrasladoRechazadoPor")
 }
 
 model Rol {
@@ -75,60 +121,55 @@ model Rol {
 }
 
 model Area {
-  id                    Int                    @id @default(autoincrement())
-  nombre                String                 @unique @db.VarChar(100)
-  descripcion           String?                @db.VarChar(255)
-  presupuestos          Presupuesto[]
-  requisiciones         Requisicion[]
-  inventarios           Inventario[]
-  trasladosOrigen       TrasladoActivos[]      @relation("AreaOrigen")
-  trasladosDestino      TrasladoActivos[]      @relation("AreaDestino")
-  usuarios              Usuario[]
-  solicitudPresupuestos SolicitudPresupuesto[]
-  calificacionConsultor CalificarConsultor[]   @relation("AreaCalificacionConsultor")
-}
-
-model PeriodoPresupuestal {
-  id                      Int                      @id @default(autoincrement())
-  periodo                 Int                      @unique
-  presupuestos            Presupuesto[]
-  presupuestoGeneral      PresupuestoGeneral?
-  solicitudPresupuestos   SolicitudPresupuesto[]
-  proyeccionPresupuestals ProyeccionPresupuestal[]
+  id                       Int                       @id @default(autoincrement())
+  nombre                   String                    @unique @db.VarChar(100)
+  descripcion              String?                   @db.VarChar(255)
+  estado                   Boolean                   @default(true)
+  presupuestos             Presupuesto[]
+  requisiciones            Requisicion[]
+  inventarioAreas          InventarioArea[]
+  trasladosOrigen          TrasladoActivos[]         @relation("AreaOrigen")
+  trasladosDestino         TrasladoActivos[]         @relation("AreaDestino")
+  usuarios                 Usuario[]
+  solicitudPresupuestos    SolicitudPresupuesto[]
+  calificacionesConsultor  CalificacionConsultor[]
+  cajaMenorMovimientos     CajaMenorMovimiento[]
+  movimientosInventario    MovimientoInventario[]
+  solicitudSalidaProductos solicitudSalidaProducto[]
 }
 
 model Presupuesto {
-  id                Int                 @id @default(autoincrement())
+  id                Int      @id @default(autoincrement())
   areaId            Int
-  periodoId         Int
-  cuentaContableId  Int?
-  presupuestoAnual  Decimal             @db.Decimal(19, 2)
-  totalGastado      Decimal             @default(0) @db.Decimal(19, 2)
-  montoComprometido Decimal             @default(0) @db.Decimal(19, 2)
-  saldoDisponible   Decimal             @default(0) @db.Decimal(19, 2)
-  cuentaContable    CuentaContable?     @relation(fields: [cuentaContableId], references: [id])
-  periodo           PeriodoPresupuestal @relation(fields: [periodoId], references: [id])
-  area              Area                @relation(fields: [areaId], references: [id])
+  presupuestoAnual  Decimal  @db.Decimal(19, 2)
+  totalGastado      Decimal  @default(0) @db.Decimal(19, 2)
+  montoComprometido Decimal  @default(0) @db.Decimal(19, 2)
+  saldoDisponible   Decimal  @default(0) @db.Decimal(19, 2)
+  periodo           Int
+  area              Area     @relation(fields: [areaId], references: [id])
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
-  @@unique([areaId, periodoId])
+  @@unique([areaId, periodo])
 }
 
 model PresupuestoGeneral {
-  id                Int                 @id @default(autoincrement())
-  periodoId         Int
-  presupuestoTotal  Decimal             @db.Decimal(19, 2)
-  totalEjecutado    Decimal             @default(0) @db.Decimal(19, 2)
-  montoComprometido Decimal             @default(0) @db.Decimal(19, 2)
-  saldoDisponible   Decimal             @default(0) @db.Decimal(19, 2)
-  periodo           PeriodoPresupuestal @relation(fields: [periodoId], references: [id])
+  id                Int      @id @default(autoincrement())
+  presupuestoTotal  Decimal  @db.Decimal(19, 2)
+  totalEjecutado    Decimal  @default(0) @db.Decimal(19, 2)
+  montoComprometido Decimal  @default(0) @db.Decimal(19, 2)
+  saldoDisponible   Decimal  @default(0) @db.Decimal(19, 2)
+  periodo           Int
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
-  @@unique([periodoId])
+  @@unique([periodo])
 }
 
 model SolicitudPresupuesto {
   id                   Int               @id @default(autoincrement())
   areaId               Int
-  periodoId            Int
+  periodo              Int
   usuarioSolicitanteId String
   estado               EstadoPresupuesto @default(PENDIENTE)
 
@@ -142,44 +183,46 @@ model SolicitudPresupuesto {
   fechaAprobacion DateTime?
 
   // Relaciones
-  area               Area                @relation(fields: [areaId], references: [id])
-  periodo            PeriodoPresupuestal @relation(fields: [periodoId], references: [id])
-  usuarioSolicitante Usuario             @relation(fields: [usuarioSolicitanteId], references: [id])
-  aprobadoPor        Usuario?            @relation("AprobadorPresupuesto", fields: [aprobadoPorId], references: [id])
+  area               Area     @relation(fields: [areaId], references: [id])
+  usuarioSolicitante Usuario  @relation(fields: [usuarioSolicitanteId], references: [id])
+  aprobadoPor        Usuario? @relation("AprobadorPresupuesto", fields: [aprobadoPorId], references: [id])
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
   articulos ArticuloSolicitudPresupuesto[]
+
+  @@unique([areaId, periodo])
 }
 
 model ProyeccionPresupuestal {
-  id                       Int                 @id @default(autoincrement())
-  codigo                   String              @unique @db.VarChar(50)
-  periodoId                Int
+  id                       Int            @id @default(autoincrement())
+  codigo                   String         @unique @db.VarChar(50)
   idCuentaContable         Int
-  ejecucionMes             Decimal             @db.Decimal(19, 2)
-  ejecutadoAl30            Decimal             @db.Decimal(19, 2)
-  proyeccionAl31Diciembre  Decimal             @db.Decimal(19, 2)
-  ejecucionAnualProyectada Decimal             @db.Decimal(19, 2)
-  presupuestoProximoAnio   Decimal             @db.Decimal(19, 2)
-  variacionProximoAnio     Decimal             @db.Decimal(19, 2)
-  cuentaContable           CuentaContable      @relation(fields: [idCuentaContable], references: [id])
-  periodo                  PeriodoPresupuestal @relation(fields: [periodoId], references: [id])
+  ejecucionMes             Decimal        @db.Decimal(19, 2)
+  ejecutadoAl30            Decimal        @db.Decimal(19, 2)
+  proyeccionAl31Diciembre  Decimal        @db.Decimal(19, 2)
+  ejecucionAnualProyectada Decimal        @db.Decimal(19, 2)
+  presupuestoProximoAnio   Decimal        @db.Decimal(19, 2)
+  variacionProximoAnio     Decimal        @db.Decimal(19, 2)
+  cuentaContable           CuentaContable @relation(fields: [idCuentaContable], references: [id])
+  periodo                  Int
 
-  @@unique([periodoId, idCuentaContable])
+  @@unique([periodo, idCuentaContable])
 }
 
 model ArticuloSolicitudPresupuesto {
-  id                 Int     @id @default(autoincrement())
+  id                 Int      @id @default(autoincrement())
   solicitudId        Int
-  productoId         Int
   conceptoContableId Int
   cuentaContableId   Int
-  cantidadSolicitada Decimal @db.Decimal(10, 2)
-  valorUnitario      Decimal @db.Decimal(19, 2)
+  valorEstimado      Decimal  @db.Decimal(19, 2)
+  valorAprobado      Decimal? @db.Decimal(19, 2)
 
   solicitud        SolicitudPresupuesto @relation(fields: [solicitudId], references: [id])
-  producto         Producto             @relation(fields: [productoId], references: [id])
   conceptoContable ConceptoContable     @relation(fields: [conceptoContableId], references: [id])
   cuentaContable   CuentaContable       @relation(fields: [cuentaContableId], references: [id])
+
+  @@unique([solicitudId, conceptoContableId])
 }
 
 // ===== CONTABILIDAD =====
@@ -198,77 +241,83 @@ model CuentaContable {
   tipoCuentaId                  Int
   tipoCuenta                    TipoCuentaContable             @relation(fields: [tipoCuentaId], references: [id])
   conceptos                     ConceptoContable[]
-  presupuestos                  Presupuesto[]
   articuloSolicitudPresupuestos ArticuloSolicitudPresupuesto[]
   proyeccionPresupuestal        ProyeccionPresupuestal[]
+  cajaMenorMovimientos          CajaMenorMovimiento[]
 }
 
 model ConceptoContable {
-  id                            Int                            @id @default(autoincrement())
-  nombre                        String                         @unique @db.VarChar(100)
-  codigo                        String                         @unique
-  cuentaContableId              Int
-  cuentaContable                CuentaContable                 @relation(fields: [cuentaContableId], references: [id])
-  productos                     Producto[]
+  id               Int            @id @default(autoincrement())
+  nombre           String         @unique @db.VarChar(100)
+  codigo           String         @unique
+  cuentaContableId Int
+  cuentaContable   CuentaContable @relation(fields: [cuentaContableId], references: [id])
+  productos        Producto[]
+
   articuloSolicitudPresupuestos ArticuloSolicitudPresupuesto[]
+  cajaMenorMovimientos          CajaMenorMovimiento[]
 }
 
 model Producto {
-  id                           Int                            @id @default(autoincrement())
-  nombre                       String                         @unique @db.VarChar(150)
-  tipo                         String?                        @db.VarChar(50)
-  conceptoContableId           Int
-  conceptoContable             ConceptoContable               @relation(fields: [conceptoContableId], references: [id])
-  inventarios                  Inventario[]
-  articulosRequisicion         ArticuloRequisicion[]
-  articuloSolicitudPresupuesto ArticuloSolicitudPresupuesto[]
-  consultorCalificaciones      ConsultorCalificacion[]
-  calificarConsultors          CalificarConsultor[]           @relation("ProductoCalificacionConsultor")
+  id                       Int                       @id @default(autoincrement())
+  nombre                   String                    @unique @db.VarChar(150)
+  tipo                     TipoProducto?
+  estado                   EstadoActivo?
+  conceptoContableId       Int
+  conceptoContable         ConceptoContable          @relation(fields: [conceptoContableId], references: [id])
+  inventariosAreas         InventarioArea[]
+  movimientosInventario    MovimientoInventario[]
+  articulosRequisicion     ArticuloRequisicion[]
+  trasladosActivos         TrasladoActivos[]
+  solicitudSalidaProductos solicitudSalidaProducto[]
 }
 
 // ===== REQUISICIONES Y PAGOS =====
 model Proveedor {
-  id                      Int                     @id @default(autoincrement())
-  nit                     String                  @unique @db.VarChar(20)
-  nombre                  String                  @unique @db.VarChar(150)
-  responsable             String?                 @db.VarChar(100)
-  telefono                String?                 @db.VarChar(500)
-  correo                  String?                 @db.VarChar(500)
-  tipoInsumo              String?                 @db.VarChar(500)
-  requisiciones           Requisicion[]
-  cotizaciones            Cotizacion[]
-  consultorCalificaciones ConsultorCalificacion[]
+  id                    Int                     @id @default(autoincrement())
+  nit                   String                  @unique @db.VarChar(20)
+  nombre                String                  @unique @db.VarChar(150)
+  responsable           String?                 @db.VarChar(100)
+  telefono              String?                 @db.VarChar(500)
+  correo                String?                 @db.VarChar(500)
+  tipoInsumo            String?                 @db.VarChar(500)
+  requisiciones         Requisicion[]
+  cajaMenorMovimientos  CajaMenorMovimiento[]
+  calificacionProveedor CalificacionProveedor[]
 }
 
-model Cotizacion {
-  id             Int     @id @default(autoincrement())
-  requisicionId  Int
-  proveedorId    Int?
-  monto          Decimal @db.Decimal(19, 2)
-  archivoSoporte String? @db.VarChar(500)
-  descripcion    String? @db.VarChar(255)
+model SoporteCotizacion {
+  id                    Int         @id @default(autoincrement())
+  requisicionId         Int
+  soporteCotizacionPath String?     @db.VarChar(500)
+  requisicion           Requisicion @relation(fields: [requisicionId], references: [id], onDelete: Cascade)
+  createdAt             DateTime    @default(now())
+  updatedAt             DateTime    @updatedAt
 
-  requisicion Requisicion @relation(fields: [requisicionId], references: [id], onDelete: Cascade)
-  proveedor   Proveedor?  @relation(fields: [proveedorId], references: [id])
+  @@index([requisicionId])
 }
 
 model Requisicion {
   id                     Int               @id @default(autoincrement())
-  estado                 EstadoRequisicion @default(ENVIADA)
+  periodo                Int
+  estado                 EstadoRequisicion @default(PENDIENTE)
   valorPresupuestado     Decimal           @db.Decimal(19, 2) // ← comprometido al crear
-  ivaPresupuestado       Decimal           @default(0) @db.Decimal(19, 2)
+  ivaPresupuestado       Decimal?          @default(0) @db.Decimal(19, 2)
   valorDefinido          Decimal?          @db.Decimal(19, 2) // tras cotizaciones
   ivaDefinido            Decimal?          @db.Decimal(19, 2)
   justificacion          String            @db.VarChar(1000)
   partidaNoPresupuestada Boolean           @default(false)
   comentario             String?           @db.VarChar(500)
   numeroComite           String?           @db.VarChar(50)
-  rector                 String?           @db.VarChar(150)
-  vicerrector            String?           @db.VarChar(150)
-  sindico                String?           @db.VarChar(150)
+  rector                 Boolean?          @default(false)
+  vicerrector            Boolean?          @default(false)
+  sindico                Boolean?          @default(false)
   motivoRechazo          String?           @db.VarChar(500)
   createdAt              DateTime          @default(now())
   updatedAt              DateTime          @updatedAt
+  daGarantia             Boolean?          @default(false)
+  tiempoGarantia         String?
+  unidadGarantia         String?           @db.VarChar(50)
 
   //id Relacion
   usuarioId   String?
@@ -276,18 +325,22 @@ model Requisicion {
   proveedorId Int?
 
   //Relaciones
-  cotizaciones Cotizacion[]
-  articulos    ArticuloRequisicion[]
+  cotizaciones SoporteCotizacion[]
+  articulo     ArticuloRequisicion?
   pagos        Pago[]
 
-  area      Area       @relation(fields: [areaId], references: [id])
-  proveedor Proveedor? @relation(fields: [proveedorId], references: [id])
-  usuario   Usuario?   @relation(fields: [usuarioId], references: [id])
+  area                  Area                    @relation(fields: [areaId], references: [id])
+  proveedor             Proveedor?              @relation(fields: [proveedorId], references: [id])
+  usuario               Usuario?                @relation(fields: [usuarioId], references: [id])
+  calificacionProveedor CalificacionProveedor[]
+  calificacionTesoreria CalificacionTesoreria[]
+  calificacionConsultor CalificacionConsultor[]
+  movimientosInventario MovimientoInventario[]
 }
 
 model ArticuloRequisicion {
   id            Int     @id @default(autoincrement())
-  requisicionId Int
+  requisicionId Int     @unique
   productoId    Int
   cantidad      Decimal @db.Decimal(10, 2)
   valorUnitario Decimal @db.Decimal(19, 2)
@@ -300,78 +353,184 @@ model Pago {
   id                   Int      @id @default(autoincrement())
   requisicionId        Int
   usuarioRegistradorId String
-  monto                Decimal  @db.Decimal(19, 2)
-  iva                  Decimal  @default(0) @db.Decimal(19, 2)
-  fechaPago            DateTime @default(now())
-  metodoPago           String   @db.VarChar(50) // efectivo, transferencia, etc.
+  total                Decimal  @db.Decimal(19, 2)
+  tipoPago             TipoPago
   soporteFactura       String?  @db.VarChar(500)
 
-  requisicion        Requisicion @relation(fields: [requisicionId], references: [id])
-  usuarioRegistrador Usuario     @relation(fields: [usuarioRegistradorId], references: [id])
-
-  createdAt DateTime @default(now())
-}
-
-// ===== INVENTARIO =====
-model Inventario {
-  id               Int       @id @default(autoincrement())
-  areaId           Int
-  productoId       Int
-  ubicacion        String?   @db.VarChar(100)
-  cantidad         Decimal   @db.Decimal(10, 2)
-  fechaIngreso     DateTime  @default(now())
-  stockMinimo      Int?
-  tipoMovimiento   String    @db.VarChar(50) // ENTRADA, SALIDA, AJUSTE
-  motivoSalida     String?   @db.VarChar(255)
-  codigoProducto   String?   @db.VarChar(100)
-  fechaVencimiento DateTime?
-  estado           String
-
-  area     Area     @relation(fields: [areaId], references: [id])
-  producto Producto @relation(fields: [productoId], references: [id])
-
-  traslados TrasladoActivos[]
-
-  createdAt DateTime @default(now())
-}
-
-model TrasladoActivos {
-  id             Int            @id @default(autoincrement())
-  inventarioId   Int
-  areaOrigenId   Int
-  areaDestinoId  Int
-  motivoTraslado String         @db.VarChar(500)
-  estado         EstadoTraslado @default(PENDIENTE)
-  motivoRechazo  String?        @db.VarChar(500)
-
-  inventario  Inventario @relation(fields: [inventarioId], references: [id])
-  areaOrigen  Area       @relation("AreaOrigen", fields: [areaOrigenId], references: [id])
-  areaDestino Area       @relation("AreaDestino", fields: [areaDestinoId], references: [id])
+  requisicion           Requisicion             @relation(fields: [requisicionId], references: [id])
+  usuarioRegistrador    Usuario                 @relation(fields: [usuarioRegistradorId], references: [id])
+  calificacionTesoreria CalificacionTesoreria[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
+// ===== INVENTARIO =====
+
+model InventarioArea {
+  id         Int @id @default(autoincrement())
+  areaId     Int
+  productoId Int
+
+  stockActual Decimal @default(0) @db.Decimal(10, 2)
+  stockMinimo Decimal @default(0) @db.Decimal(10, 2)
+
+  area     Area     @relation(fields: [areaId], references: [id])
+  producto Producto @relation(fields: [productoId], references: [id])
+
+  @@unique([areaId, productoId])
+}
+
+enum TipoMovimientoInventario {
+  INGRESO
+  SALIDA
+  TRASLADO_ENTRADA
+  TRASLADO_SALIDA
+}
+
+model MovimientoInventario {
+  id                        Int     @id @default(autoincrement())
+  areaId                    Int
+  productoId                Int
+  requisicionId             Int?
+  trasladoId                Int?
+  usuarioId                 String?
+  solicitudSalidaProductoId Int?
+
+
+  tipo      TipoMovimientoInventario
+  cantidad  Decimal                  @db.Decimal(10, 2)
+  motivo    String?                  @db.VarChar(255)
+  ubicacion String?                  @db.VarChar(255)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  area                    Area                     @relation(fields: [areaId], references: [id])
+  producto                Producto                 @relation(fields: [productoId], references: [id])
+  requisicion             Requisicion?             @relation(fields: [requisicionId], references: [id])
+  traslado                TrasladoActivos?         @relation(fields: [trasladoId], references: [id])
+  usuario                 Usuario?                 @relation(fields: [usuarioId], references: [id])
+  solicitudSalidaProducto solicitudSalidaProducto? @relation(fields: [solicitudSalidaProductoId], references: [id])
+
+  @@index([areaId, productoId])
+}
+
+model TrasladoActivos {
+  id         Int     @id @default(autoincrement())
+  productoId Int
+  cantidad   Decimal @db.Decimal(10, 2)
+
+  areaOrigenId  Int
+  areaDestinoId Int
+
+  estado        EstadoTraslado @default(PENDIENTE)
+  motivo        String         @db.VarChar(500)
+  motivoRechazo String?
+
+  solicitadoPorId String
+  aprobadoPorId   String?
+  rechazadoPorId  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  producto    Producto @relation(fields: [productoId], references: [id])
+  areaOrigen  Area     @relation("AreaOrigen", fields: [areaOrigenId], references: [id])
+  areaDestino Area     @relation("AreaDestino", fields: [areaDestinoId], references: [id])
+
+  solicitadoPor Usuario  @relation("TrasladoSolicitadoPor", fields: [solicitadoPorId], references: [id])
+  aprobadoPor   Usuario? @relation("TrasladoAprobadoPor", fields: [aprobadoPorId], references: [id])
+  rechazadoPor  Usuario? @relation("TrasladoRechazadoPor", fields: [rechazadoPorId], references: [id])
+  movimientos MovimientoInventario[]
+}
+
+model solicitudSalidaProducto {
+  id              Int                           @id @default(autoincrement())
+  areaId          Int
+  productoId      Int
+  solicitadoPorId String
+  aprobadoPorId   String?
+  rechazadoPorId  String?
+  fechaAprobacion DateTime?
+  fechaRechazo    DateTime?
+  cantidad        Decimal                       @db.Decimal(10, 2)
+  justificacion   String?                       @db.VarChar(500)
+  motivoRechazo   String?                       @db.VarChar(500)
+  estado          EstadoSolicitudSalidaProducto @default(PENDIENTE)
+
+  area          Area     @relation(fields: [areaId], references: [id])
+  producto      Producto @relation(fields: [productoId], references: [id])
+  solicitadoPor Usuario  @relation("SolicitadoPor", fields: [solicitadoPorId], references: [id])
+  aprobadoPor   Usuario? @relation("AprobadoPor", fields: [aprobadoPorId], references: [id])
+  rechazadoPor  Usuario? @relation("RechazadoPor", fields: [rechazadoPorId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  movimientos MovimientoInventario[]
+}
+
 // ===== CAJA MENOR =====
 model CajaMenor {
-  id           Int     @id @default(autoincrement())
-  montoFijo    Decimal @db.Decimal(19, 2) // Ej: 1000000
-  umbralAlerta Decimal @default(0.2) @db.Decimal(3, 2) // 20% → alerta
+  id      Int @id @default(autoincrement())
+  periodo Int
 
-  movimientos CajaMenorMovimiento[]
+  topeMaximo Decimal @db.Decimal(19, 2)
+
+  presupuestoAsignado Decimal @default(0) @db.Decimal(19, 2)
+  presupuestoGastado  Decimal @default(0) @db.Decimal(19, 2)
+
+  movimientos           CajaMenorMovimiento[]
+  solicitudesReposicion SolicitudReposicionCajaMenor[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([periodo])
+}
+
+model SolicitudReposicionCajaMenor {
+  id          Int @id @default(autoincrement())
+  cajaMenorId Int
+
+  montoSolicitado Decimal  @db.Decimal(19, 2)
+  montoAprobado   Decimal? @db.Decimal(19, 2)
+
+  estado          EstadoReposicionCajaMenor @default(PENDIENTE)
+  justificacion   String?                   @db.VarChar(500)
+  fechaAprobacion DateTime?
+
+  cajaMenor CajaMenor @relation(fields: [cajaMenorId], references: [id])
+
+  createdAt DateTime @default(now())
 }
 
 model CajaMenorMovimiento {
-  id          Int     @id @default(autoincrement())
+  id          Int @id @default(autoincrement())
   cajaMenorId Int
-  usuarioId   String
-  tipo        String  @db.VarChar(20) // GASTO, REPOSICION
-  monto       Decimal @db.Decimal(19, 2)
-  concepto    String  @db.VarChar(255)
-  soporte     String? @db.VarChar(500)
 
-  cajaMenor CajaMenor @relation(fields: [cajaMenorId], references: [id])
-  usuario   Usuario   @relation(fields: [usuarioId], references: [id])
+  tipo TipoMovimientoCajaMenor
+
+  areaId Int?
+
+  proveedorId        Int?
+  cuentaContableId   Int?
+  conceptoContableId Int?
+
+  cantidad   Decimal @db.Decimal(10, 2)
+  valorBase  Decimal @db.Decimal(19, 2)
+  valorTotal Decimal @db.Decimal(19, 2)
+  iva        Decimal @db.Decimal(19, 2)
+  soporte    String? @db.VarChar(500)
+
+  justificacion       String? @db.VarChar(255)
+  descripcionProducto String? @db.VarChar(255)
+
+  cajaMenor        CajaMenor         @relation(fields: [cajaMenorId], references: [id])
+  area             Area?             @relation(fields: [areaId], references: [id])
+  cuentaContable   CuentaContable?   @relation(fields: [cuentaContableId], references: [id])
+  conceptoContable ConceptoContable? @relation(fields: [conceptoContableId], references: [id])
+  proveedor        Proveedor?        @relation(fields: [proveedorId], references: [id])
 
   createdAt DateTime @default(now())
 }
@@ -387,28 +546,57 @@ model Auditoria {
   updatedByUser Usuario  @relation("AuditoriaUpdatedBy", fields: [updatedBy], references: [id])
 }
 
-model CalificarConsultor {
-  id              Int     @id @default(autoincrement())
-  areaId          Int
-  productoId      Int
+// ===== CALIFICACIONES =====
+
+model CalificacionConsultor {
+  id            Int    @id @default(autoincrement())
+  requisicionId Int    @unique
+  consultorId   String
+  areaId        Int
+
   calidadProducto Int
   tiempoEntrega   Int
   comentario      String? @db.VarChar(500)
 
-  area     Area     @relation("AreaCalificacionConsultor", fields: [areaId], references: [id])
-  producto Producto @relation("ProductoCalificacionConsultor", fields: [productoId], references: [id])
+  requisicion Requisicion @relation(fields: [requisicionId], references: [id])
+  consultor   Usuario     @relation("Consultor", fields: [consultorId], references: [id])
+  area        Area        @relation(fields: [areaId], references: [id])
+
+  createdAt DateTime @default(now())
 }
 
-model ConsultorCalificacion {
-  id                      Int       @id @default(autoincrement())
-  proveedorId             Int
-  productoId              Int
-  calificacionPrecio      Int
-  calificacionPuntualidad Int
-  calificacionGarantia    Int
-  calificacionEntrega     Int
-  calificacionCalidad     Int
-  comentario              String?   @db.VarChar(500)
-  proveedor               Proveedor @relation(fields: [proveedorId], references: [id])
-  producto                Producto  @relation(fields: [productoId], references: [id])
+model CalificacionProveedor {
+  id            Int    @id @default(autoincrement())
+  requisicionId Int    @unique
+  proveedorId   Int
+  consultorId   String
+
+  precio          Int
+  puntualidad     Int
+  tiempoGarantia  Int
+  tiempoEntrega   Int
+  calidadProducto Int
+  comentario      String? @db.VarChar(500)
+
+  requisicion Requisicion @relation(fields: [requisicionId], references: [id])
+  proveedor   Proveedor   @relation(fields: [proveedorId], references: [id])
+  consultor   Usuario     @relation("EvalProveedor", fields: [consultorId], references: [id])
+
+  createdAt DateTime @default(now())
+}
+
+model CalificacionTesoreria {
+  id            Int    @id @default(autoincrement())
+  requisicionId Int    @unique
+  pagoId        Int
+  consultorId   String
+
+  pagoOportuno Int
+  comentario   String? @db.VarChar(500)
+
+  requisicion Requisicion @relation(fields: [requisicionId], references: [id])
+  pago        Pago        @relation(fields: [pagoId], references: [id])
+  consultor   Usuario     @relation(fields: [consultorId], references: [id])
+
+  createdAt DateTime @default(now())
 }
