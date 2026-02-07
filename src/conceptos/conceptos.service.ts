@@ -26,19 +26,6 @@ export class ConceptosService {
       );
     }
 
-    //2. Verificar si el nombre del concepto contable ya existe
-    const nombreExistente = await this.prisma.conceptoContable.findFirst({
-      where: {
-        nombre: dto.nombre,
-      },
-    });
-
-    if (nombreExistente) {
-      throw new ConflictException(
-        'El nombre del concepto contable ya existe, por favor ingrese otro nombre',
-      );
-    }
-
     //3. Crear concepto contable
     const data = await this.prisma.conceptoContable.create({
       data: {
