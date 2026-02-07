@@ -1,3 +1,4 @@
+import { EstadoActivo } from '@/generated/prisma/enums';
 import { IsInt, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
 export class ModificarDetalleProductoDto {
@@ -16,4 +17,8 @@ export class ModificarDetalleProductoDto {
   @IsString()
   @IsOptional()
   ubicacion?: string;
+
+  @IsString()
+  @IsOptional()
+  estado?: EstadoActivo;
 }

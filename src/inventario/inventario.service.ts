@@ -59,6 +59,12 @@ export class InventarioService {
         throw new Error('La cantidad ingresada no puede ser mayor a la solicitada');
       }
 
+      // Validar tipo del producto
+      const producto = await prisma.producto.findUnique({
+        where: { id: productoId },
+        select: { tipo: true },
+      });
+
       // Movimiento
       const movimientoInventario = await prisma.movimientoInventario.create({
         data: {
@@ -91,6 +97,7 @@ export class InventarioService {
             stockActual: Number(cantidad),
             stockMinimo: 1,
             ubicacion,
+            estado: producto?.tipo === 'ACTIVO' ? 'ACTIVO' : undefined,
           },
         });
       }
@@ -231,11 +238,11 @@ export class InventarioService {
         stockActual: true,
         productoId: true,
         ubicacion: true,
+        estado: true,
         producto: {
           select: {
             nombre: true,
             tipo: true,
-            estado: true,
             conceptoContable: {
               select: { nombre: true },
             },
@@ -265,12 +272,12 @@ export class InventarioService {
           id: productoId,
           nombre: item.producto.nombre,
           tipo: item.producto.tipo,
-          estado: item.producto.estado,
           categoria: item.producto.conceptoContable.nombre,
           cantidad: 0,
           areas: areaId ? undefined : new Set<string>(),
           area: areaId ? item.area.nombre : undefined,
           ubicacion: item.ubicacion,
+          estado: item.estado,
         });
       }
 
@@ -311,13 +318,13 @@ export class InventarioService {
         stockActual: true,
         stockMinimo: true,
         ubicacion: true,
+        estado: true,
         productoId: true,
         areaId: true,
         producto: {
           select: {
             nombre: true,
             tipo: true,
-            estado: true,
             conceptoContable: {
               select: { nombre: true },
             },
@@ -343,13 +350,13 @@ export class InventarioService {
           id: productoId,
           nombre: item.producto.nombre,
           tipo: item.producto.tipo,
-          estado: item.producto.estado,
           categoria: item.producto.conceptoContable.nombre,
           stockMinimo: Number(item.stockMinimo),
           cantidad: Number(item.stockActual),
           areaId: item.areaId,
           area: item.area.nombre,
           ubicacion: item.ubicacion,
+          estado: item.estado,
         });
       }
     }
@@ -379,7 +386,7 @@ export class InventarioService {
 
     await this.prisma.inventarioArea.update({
       where: { id: inventarioArea.id },
-      data: { stockMinimo: Number(dto.stockMinimo), ubicacion: dto.ubicacion },
+      data: { stockMinimo: Number(dto.stockMinimo), ubicacion: dto.ubicacion, estado: dto.estado },
     });
 
     return {
